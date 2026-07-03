@@ -1,0 +1,22 @@
+import { setLocale } from "@/app/actions";
+import type { Locale } from "@/lib/i18n";
+
+/**
+ * 언어 전환 버튼. 서버 액션으로 쿠키를 바꾸면 Next.js가 현재 페이지를
+ * 자동 재렌더링하므로 클라이언트 JS 없이도 동작합니다.
+ */
+export function LanguageToggle({ locale }: { locale: Locale }) {
+  const other: Locale = locale === "ko" ? "en" : "ko";
+  const label = locale === "ko" ? "EN" : "한국어";
+  return (
+    <form action={setLocale.bind(null, other)}>
+      <button
+        type="submit"
+        className="rounded-full border border-brand-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-brand-700 backdrop-blur transition hover:bg-brand-50 active:scale-95"
+        aria-label={`Switch language to ${other}`}
+      >
+        🌐 {label}
+      </button>
+    </form>
+  );
+}

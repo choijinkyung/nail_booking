@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-50: #fdf2f8;
+  --color-brand-100: #fce7f3;
+  --color-brand-200: #fbcfe8;
+  --color-brand-300: #f9a8d4;
+  --color-brand-400: #f472b6;
+  --color-brand-500: #ec4899;
+  --color-brand-600: #db2777;
+  --color-brand-700: #be185d;
+  --color-brand-800: #9d174d;
+
+  --color-ink: #3f2a37;
+  --color-muted: #8b7280;
+
+  --font-sans:
+    "Pretendard", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fff7fb;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--background);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 600px at 100% -10%, #fde7f2 0%, transparent 55%),
+    radial-gradient(900px 500px at -10% 0%, #fce7f3 0%, transparent 50%),
+    var(--background);
+  min-height: 100dvh;
+}
+
+/* 모바일 탭 하이라이트 최소화 */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 안전영역(노치) 대응 */
+.safe-b {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
