@@ -29,6 +29,7 @@ export default async function BookPage() {
           services={services}
           slots={slots}
           notice={isEn ? settings.notice_en : settings.notice_ko}
+          scheduleNote={isEn ? settings.schedule_note_en : settings.schedule_note_ko}
           currency={settings.currency}
         />
       </main>

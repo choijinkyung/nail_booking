@@ -103,7 +103,7 @@ const ko = {
     reviewAlternatives: "대체 시간",
     reviewInfo: "예약자",
     agree:
-      "반려동물(강아지·고양이) 안내를 확인했으며 방문에 동의합니다.",
+      "반려동물(강아지·고양이) 안내와 예약 시간이 변경될 수 있다는 점을 확인했으며, 방문에 동의합니다.",
     submitRequest: "예약 요청 보내기",
     submitting: "요청 보내는 중…",
     errName: "이름을 입력해주세요.",
@@ -381,7 +381,8 @@ const en: Dict = {
     reviewPreferred: "Preferred time",
     reviewAlternatives: "Backup times",
     reviewInfo: "Guest",
-    agree: "I've read the pet notice (dog & cat) and agree to visit.",
+    agree:
+      "I've read the pet notice (dog & cat), understand my appointment time may change, and agree to visit.",
     submitRequest: "Send booking request",
     submitting: "Sending…",
     errName: "Please enter your name.",

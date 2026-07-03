@@ -21,13 +21,15 @@ interface Props {
   services: Service[];
   slots: AvailabilitySlot[];
   notice: string;
+  scheduleNote: string;
   currency: string;
 }
 
 const STEPS = ["step_service", "step_time", "step_info", "step_review"] as const;
 
 export function BookingWizard(props: Props) {
-  const { locale, dict, services, slots, notice, currency } = props;
+  const { locale, dict, services, slots, notice, scheduleNote, currency } =
+    props;
   const isEn = locale === "en";
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -96,7 +98,6 @@ export function BookingWizard(props: Props) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
       if (password.trim().length < 4) return dict.booking.errPassword;
-      if (!agree) return dict.booking.errAgree;
     }
     return "";
   }
@@ -123,6 +124,11 @@ export function BookingWizard(props: Props) {
         setStep(i);
         return;
       }
+    }
+    // 마지막 확인: 안내사항 동의 필수
+    if (!agree) {
+      setError(dict.booking.errAgree);
+      return;
     }
     setError("");
     startTransition(async () => {
@@ -409,20 +415,6 @@ export function BookingWizard(props: Props) {
                 className={inputClass}
               />
             </Field>
-
-            {/* 안내사항 강조 + 동의 */}
-            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-              <p className="whitespace-pre-line">⚠️ {notice}</p>
-            </div>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-3">
-              <input
-                type="checkbox"
-                checked={agree}
-                onChange={(e) => setAgree(e.target.checked)}
-                className="mt-0.5 h-5 w-5 accent-brand-600"
-              />
-              <span className="text-sm text-brand-900">{dict.booking.agree}</span>
-            </label>
           </div>
         )}
 
@@ -475,6 +467,23 @@ export function BookingWizard(props: Props) {
             <p className="px-1 text-xs text-muted">
               {dict.booking.estimatedNote}
             </p>
+
+            {/* 마지막 확인: 반려동물 안내 + 예약시간 변경 가능 안내 */}
+            <div className="space-y-2 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="whitespace-pre-line">⚠️ {notice}</p>
+              <p className="whitespace-pre-line border-t border-amber-200 pt-2">
+                ⏰ {scheduleNote}
+              </p>
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-200 bg-white p-3">
+              <input
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                className="mt-0.5 h-5 w-5 accent-brand-600"
+              />
+              <span className="text-sm text-brand-900">{dict.booking.agree}</span>
+            </label>
           </div>
         )}
       </div>
