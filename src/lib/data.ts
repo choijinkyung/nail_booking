@@ -95,6 +95,24 @@ export async function getOpenSlots(): Promise<AvailabilitySlot[]> {
   }
 }
 
+/** 고객 TimePicker용: 미래의 모든 슬롯 (open/booked/blocked) — 예약된 건 비활성 표시 */
+export async function getFutureSlots(): Promise<AvailabilitySlot[]> {
+  if (!isSupabaseAdminConfigured()) return [];
+  try {
+    const sb = createSupabaseAdminClient();
+    const nowIso = new Date().toISOString();
+    const { data } = await sb
+      .from("availability_slots")
+      .select("*")
+      .neq("status", "blocked")
+      .gte("starts_at", nowIso)
+      .order("starts_at", { ascending: true });
+    return (data as AvailabilitySlot[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** 관리자용: 전체 시간대 (미래 우선) */
 export async function getAllSlots(): Promise<AvailabilitySlot[]> {
   if (!isSupabaseAdminConfigured()) return [];
@@ -148,6 +166,9 @@ function hydrate(
     requested_slot: b.requested_slot_id
       ? slots.get(b.requested_slot_id) ?? null
       : null,
+    proposed_slots: (b.proposed_slot_ids ?? [])
+      .map((id) => slots.get(id))
+      .filter((s): s is AvailabilitySlot => Boolean(s)),
   };
 }
 
@@ -170,6 +191,7 @@ export async function getBookingByCode(
       b.confirmed_slot_id,
       b.requested_slot_id,
       ...(b.alternative_slot_ids ?? []),
+      ...(b.proposed_slot_ids ?? []),
     ].filter((x): x is string => Boolean(x));
     const slots = await slotsByIds(sb, ids);
     return hydrate(b, slots);
@@ -257,6 +279,7 @@ export async function getAllBookings(): Promise<BookingWithSlots[]> {
     b.confirmed_slot_id,
     b.requested_slot_id,
     ...(b.alternative_slot_ids ?? []),
+    ...(b.proposed_slot_ids ?? []),
   ]);
   const slots = await slotsByIds(
     sb,

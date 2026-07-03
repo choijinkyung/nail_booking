@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
-import { getBookingByCode, getOpenSlots, getSettings } from "@/lib/data";
+import { getBookingByCode, getFutureSlots, getSettings } from "@/lib/data";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Card } from "@/components/ui";
@@ -31,7 +31,7 @@ export default async function StatusPage({
 
   const booking = code ? await getBookingByCode(code) : null;
   const notFound = Boolean(code) && !booking;
-  const openSlots = booking ? await getOpenSlots() : [];
+  const futureSlots = booking ? await getFutureSlots() : [];
 
   const st = dict.status;
   const statusText: Record<BookingStatus, string> = {
@@ -96,7 +96,7 @@ export default async function StatusPage({
             {/* 손님 변경/취소 요청 (관리자 승인 시에만 실제 변경) */}
             <BookingActions
               booking={booking}
-              openSlots={openSlots}
+              futureSlots={futureSlots}
               dict={dict}
               locale={locale}
             />

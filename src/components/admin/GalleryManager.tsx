@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Dict } from "@/lib/i18n";
+import { GALLERY_CATEGORIES, type Dict } from "@/lib/i18n";
 import type { GalleryPhoto } from "@/lib/types";
+import { formatMoney } from "@/lib/format";
 import {
   deleteGalleryPhoto,
   uploadGalleryPhoto,
@@ -13,9 +14,11 @@ import {
 export function GalleryManager({
   photos,
   dict,
+  currency,
 }: {
   photos: GalleryPhoto[];
   dict: Dict;
+  currency: string;
 }) {
   const a = dict.admin;
   const router = useRouter();
@@ -25,6 +28,8 @@ export function GalleryManager({
     null,
   );
   const [delPending, startDelete] = useTransition();
+  const [cat, setCat] = useState<string>(GALLERY_CATEGORIES[0]);
+  const [customCat, setCustomCat] = useState("");
 
   useEffect(() => {
     if (state?.ok) {
@@ -34,6 +39,7 @@ export function GalleryManager({
   }, [state, router]);
 
   const categories = [...new Set(photos.map((p) => p.category))];
+  const resolvedCat = cat === "__custom__" ? customCat.trim() : cat;
   const input =
     "w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
@@ -53,24 +59,54 @@ export function GalleryManager({
           required
           className="block w-full text-sm text-brand-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-700"
         />
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted">{a.photoCategory}</span>
-          <input
-            name="category"
-            list="gallery-categories"
-            placeholder={a.categoryHint}
-            className={input}
-          />
-          <datalist id="gallery-categories">
-            {categories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </label>
+        {/* 카테고리 선택 (예약 시술 종류) */}
+        <input type="hidden" name="category" value={resolvedCat} />
         <div className="grid grid-cols-2 gap-2">
-          <input name="caption_ko" placeholder={a.captionKo} className={input} />
-          <input name="caption_en" placeholder={a.captionEn} className={input} />
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">
+              {a.photoCategory}
+            </span>
+            <select
+              value={cat}
+              onChange={(e) => setCat(e.target.value)}
+              className={input}
+            >
+              {[...new Set([...GALLERY_CATEGORIES, ...categories])].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              <option value="__custom__">{a.categoryCustom}…</option>
+            </select>
+            {cat === "__custom__" && (
+              <input
+                value={customCat}
+                onChange={(e) => setCustomCat(e.target.value)}
+                placeholder={a.categoryHint}
+                className={`${input} mt-2`}
+              />
+            )}
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">
+              {a.galleryPrice}
+            </span>
+            <input
+              name="price"
+              inputMode="decimal"
+              placeholder="$"
+              className={input}
+            />
+          </label>
         </div>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted">{a.captionKo}</span>
+          <textarea name="caption_ko" rows={3} className={input} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted">{a.captionEn}</span>
+          <textarea name="caption_en" rows={2} className={input} />
+        </label>
         {state && !state.ok && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
             {a.uploadErr}
@@ -126,6 +162,11 @@ export function GalleryManager({
                       >
                         ✕
                       </button>
+                      {p.price != null && (
+                        <span className="absolute bottom-1 left-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                          {formatMoney(p.price, currency)}
+                        </span>
+                      )}
                     </div>
                   ))}
               </div>

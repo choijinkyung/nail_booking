@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
-import { getActiveServices, getOpenSlots, getSettings } from "@/lib/data";
+import { getActiveServices, getFutureSlots, getSettings } from "@/lib/data";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BookingWizard } from "@/components/booking/BookingWizard";
 
@@ -11,7 +11,7 @@ export default async function BookPage() {
   const [settings, services, slots] = await Promise.all([
     getSettings(),
     getActiveServices(),
-    getOpenSlots(),
+    getFutureSlots(),
   ]);
   const isEn = locale === "en";
   const shopName = isEn ? settings.shop_name_en : settings.shop_name_ko;

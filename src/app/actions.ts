@@ -10,6 +10,7 @@ import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
 import { hashPassword, makeSalt } from "@/lib/hash";
 import { findBookingCodeByNamePassword } from "@/lib/data";
+import { bookingDurationMin, fitFrom, sortSlots } from "@/lib/scheduling";
 import type { Booking, BookingServiceLine, Service } from "@/lib/types";
 
 /** 언어 전환 — 쿠키 설정 후 페이지 새로고침용 */
@@ -226,6 +227,83 @@ export async function lookupByNamePassword(input: {
     input.password ?? "",
   );
   return code ? { ok: true, code } : { ok: false };
+}
+
+// ── 관리자가 제안한 가능시간 중 하나를 손님이 선택 → 확정 ──
+export async function acceptProposedTime(input: {
+  code: string;
+  slotId: string;
+}): Promise<CustomerRequestResult> {
+  if (!isSupabaseAdminConfigured()) return { ok: false, error: "SETUP" };
+  const code = (input.code ?? "").trim().toUpperCase();
+  if (!code || !input.slotId) return { ok: false, error: "NOT_FOUND" };
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("bookings")
+    .select("*")
+    .eq("code", code)
+    .single();
+  const b = data as Booking | null;
+  if (!b) return { ok: false, error: "NOT_FOUND" };
+  if (b.status !== "pending" || !(b.proposed_slot_ids ?? []).includes(input.slotId))
+    return { ok: false, error: "CLOSED" };
+
+  const duration = bookingDurationMin(b.services ?? []);
+  const nowIso = new Date().toISOString();
+  const { data: slotRows } = await sb
+    .from("availability_slots")
+    .select("id, starts_at, status")
+    .gte("starts_at", nowIso)
+    .neq("status", "blocked")
+    .order("starts_at", { ascending: true });
+  const sorted = sortSlots(
+    (slotRows as { id: string; starts_at: string; status: string }[]) ?? [],
+  );
+  const occ = fitFrom(sorted, input.slotId, duration);
+  if (!occ) return { ok: false, error: "SLOT_TAKEN" };
+
+  const { data: locked } = await sb
+    .from("availability_slots")
+    .update({ status: "booked" })
+    .in("id", occ)
+    .eq("status", "open")
+    .select("id");
+  if (!locked || locked.length !== occ.length) {
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+
+  const { error } = await sb
+    .from("bookings")
+    .update({
+      status: "confirmed",
+      confirmed_slot_id: input.slotId,
+      occupied_slot_ids: occ,
+      proposed_slot_ids: [],
+      admin_message: "",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", b.id);
+  if (error) {
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
+    return { ok: false, error: "DB" };
+  }
+
+  try {
+    const siteUrl = await getSiteUrl();
+    await notifyAdminBookingUpdate({
+      code: b.code,
+      customerName: b.customer_name,
+      contact: b.customer_contact,
+      kind: "change",
+      message: "손님이 안내된 시간 중 하나를 선택해 예약이 확정됐어요.",
+      siteUrl,
+    });
+  } catch (err) {
+    console.error("[acceptProposedTime] 알림 무시:", err);
+  }
+  revalidatePath("/admin");
+  return { ok: true };
 }
 
 // ── 예약 불가(declined) 후 다른 시간으로 다시 요청 ──

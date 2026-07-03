@@ -25,7 +25,12 @@ export default async function GalleryPage() {
         <h1 className="mt-2 text-xl font-bold text-brand-800">
           🖼️ {dict.gallery.title}
         </h1>
-        <GalleryView photos={photos} dict={dict} locale={locale} />
+        <GalleryView
+          photos={photos}
+          dict={dict}
+          locale={locale}
+          currency={settings.currency}
+        />
       </main>
     </div>
   );

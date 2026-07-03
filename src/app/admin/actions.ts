@@ -13,7 +13,16 @@ import { notifyCustomerCompleted, notifyCustomerResult } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatMoney, formatSlot } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
-import type { AvailabilitySlot, Booking } from "@/lib/types";
+import {
+  bookingDurationMin,
+  fitFrom,
+  sortSlots,
+} from "@/lib/scheduling";
+import type {
+  AvailabilitySlot,
+  Booking,
+  BookingServiceLine,
+} from "@/lib/types";
 
 // ── 인증 ─────────────────────────────────────────────────────
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -43,7 +52,7 @@ export async function signOut() {
 async function emailResult(
   booking: Pick<Booking, "customer_email" | "code" | "admin_message">,
   confirmed: boolean,
-  slot: AvailabilitySlot | null,
+  slot: Pick<AvailabilitySlot, "starts_at" | "ends_at"> | null,
 ) {
   if (!booking.customer_email) return;
   try {
@@ -62,9 +71,9 @@ async function emailResult(
 }
 
 /**
- * 예약 확정. ★ 중복 예약 방지:
- * 슬롯을 status='open' → 'booked' 로 조건부 업데이트하여, 이미 예약된 시간이면
- * 0행이 갱신되고 확정이 거부됩니다. (DB 유니크 인덱스가 2차 방어)
+ * 예약 확정 (소요시간만큼 30분 슬롯을 통째로 점유).
+ * ★ 중복 예약 방지: 소요시간이 들어가는 연속 open 슬롯이 있어야 하며, 조건부 잠금 +
+ *   유니크 인덱스로 이중 방어. 확정한 시간부터 소요시간 동안의 슬롯이 모두 막힙니다.
  */
 export async function confirmBooking(input: {
   bookingId: string;
@@ -74,41 +83,79 @@ export async function confirmBooking(input: {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
 
-  // 0) 이전에 확정돼 있던 슬롯(변경 승인 시)을 나중에 다시 열기 위해 기억
-  const { data: prev } = await sb
+  // 0) 예약 정보 (소요시간·기존 점유 슬롯)
+  const { data: bRow } = await sb
     .from("bookings")
-    .select("confirmed_slot_id")
+    .select("services, occupied_slot_ids")
     .eq("id", input.bookingId)
     .single();
-  const prevSlotId = (prev as { confirmed_slot_id: string | null } | null)
-    ?.confirmed_slot_id;
+  if (!bRow) return { ok: false, error: "DB" };
+  const duration = bookingDurationMin(
+    (bRow as { services: BookingServiceLine[] }).services ?? [],
+  );
+  const prevOcc =
+    (bRow as { occupied_slot_ids: string[] }).occupied_slot_ids ?? [];
 
-  // 1) 슬롯 잠금 (원자적 조건부 업데이트)
-  const { data: locked, error: lockErr } = await sb
+  // 1) 이전 점유 슬롯 반납 (시간 변경/재확정 대비)
+  if (prevOcc.length > 0) {
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .in("id", prevOcc)
+      .eq("status", "booked");
+  }
+
+  // 2) 소요시간이 들어가는 연속 슬롯 계산
+  const nowIso = new Date().toISOString();
+  const { data: slotRows } = await sb
     .from("availability_slots")
-    .update({ status: "booked" })
-    .eq("id", input.slotId)
-    .eq("status", "open")
-    .select("*");
-  if (lockErr) return { ok: false, error: "DB" };
-  if (!locked || locked.length === 0) {
-    // 이미 예약됐거나 존재하지 않는 슬롯
+    .select("id, starts_at, status")
+    .gte("starts_at", nowIso)
+    .neq("status", "blocked")
+    .order("starts_at", { ascending: true });
+  const sorted = sortSlots(
+    (slotRows as { id: string; starts_at: string; status: string }[]) ?? [],
+  );
+  const occ = fitFrom(sorted, input.slotId, duration);
+  async function restorePrev() {
+    if (prevOcc.length > 0)
+      await sb
+        .from("availability_slots")
+        .update({ status: "booked" })
+        .in("id", prevOcc);
+  }
+  if (!occ) {
+    await restorePrev();
     return { ok: false, error: "SLOT_TAKEN" };
   }
-  const slot = locked[0] as AvailabilitySlot;
 
-  // 2) 예약 확정
+  // 3) 계산된 슬롯들을 원자적으로 잠금
+  const { data: locked } = await sb
+    .from("availability_slots")
+    .update({ status: "booked" })
+    .in("id", occ)
+    .eq("status", "open")
+    .select("id");
+  if (!locked || locked.length !== occ.length) {
+    // 경쟁 상태: 일부만 잠김 → 되돌리기
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
+    await restorePrev();
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+
+  // 4) 예약 확정
   const { data: updated, error: upErr } = await sb
     .from("bookings")
     .update({
       status: "confirmed",
       confirmed_slot_id: input.slotId,
+      occupied_slot_ids: occ,
       admin_message: input.message ?? "",
-      // 손님 변경요청을 승인/처리했으므로 요청 플래그 정리
       request_kind: "",
       change_request: "",
       change_requested_at: null,
       requested_slot_id: null,
+      proposed_slot_ids: [],
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.bookingId)
@@ -117,24 +164,17 @@ export async function confirmBooking(input: {
     .single();
 
   if (upErr || !updated) {
-    // 롤백: 방금 잠근 슬롯을 다시 연다
-    await sb
-      .from("availability_slots")
-      .update({ status: "open" })
-      .eq("id", input.slotId);
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
+    await restorePrev();
     return { ok: false, error: "DB" };
   }
 
-  // 변경 승인으로 시간이 바뀐 경우, 이전 확정 슬롯을 다시 연다
-  if (prevSlotId && prevSlotId !== input.slotId) {
-    await sb
-      .from("availability_slots")
-      .update({ status: "open" })
-      .eq("id", prevSlotId)
-      .eq("status", "booked");
-  }
-
-  await emailResult(updated as Booking, true, slot);
+  const startSlot = sorted.find((s) => s.id === input.slotId);
+  await emailResult(
+    updated as Booking,
+    true,
+    startSlot ? { starts_at: startSlot.starts_at, ends_at: null } : null,
+  );
   revalidatePath("/admin");
   revalidatePath("/admin/availability");
   revalidatePath("/admin/calendar");
@@ -147,11 +187,27 @@ export async function declineBooking(input: {
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
+  // 혹시 점유 슬롯이 있으면 반납
+  const { data: pre } = await sb
+    .from("bookings")
+    .select("occupied_slot_ids")
+    .eq("id", input.bookingId)
+    .single();
+  const occ = (pre as { occupied_slot_ids: string[] } | null)?.occupied_slot_ids;
+  if (occ && occ.length > 0) {
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .in("id", occ)
+      .eq("status", "booked");
+  }
   const { data, error } = await sb
     .from("bookings")
     .update({
       status: "declined",
       admin_message: input.message ?? "",
+      occupied_slot_ids: [],
+      confirmed_slot_id: null,
       request_kind: "",
       change_request: "",
       change_requested_at: null,
@@ -164,6 +220,112 @@ export async function declineBooking(input: {
   if (error || !data) return { ok: false, error: "DB" };
   await emailResult(data as Booking, false, null);
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
+ * 예약 취소 대신 "가능시간 안내": 여러 시간을 제안하면 손님이 조회 화면에서
+ * 그중 하나를 골라 확정됩니다. (status 는 pending 유지)
+ */
+export async function proposeTimes(input: {
+  bookingId: string;
+  slotIds: string[];
+  message?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.slotIds || input.slotIds.length === 0)
+    return { ok: false, error: "NO_SLOTS" };
+  const sb = createSupabaseAdminClient();
+  // 열려 있는 미래 슬롯만 제안
+  const nowIso = new Date().toISOString();
+  const { data: slotRows } = await sb
+    .from("availability_slots")
+    .select("id, status, starts_at")
+    .in("id", input.slotIds);
+  const valid = ((slotRows as { id: string; status: string; starts_at: string }[]) ?? [])
+    .filter((s) => s.status === "open" && s.starts_at >= nowIso)
+    .map((s) => s.id);
+  if (valid.length === 0) return { ok: false, error: "NO_SLOTS" };
+
+  const { data, error } = await sb
+    .from("bookings")
+    .update({
+      proposed_slot_ids: valid,
+      admin_message: input.message ?? "",
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.bookingId)
+    .select("*")
+    .single();
+  if (error || !data) return { ok: false, error: "DB" };
+
+  // 손님에게 "가능시간 안내" 이메일 (이메일 입력 시)
+  const b = data as Booking;
+  if (b.customer_email) {
+    try {
+      const siteUrl = await getSiteUrl();
+      await notifyCustomerResult({
+        to: b.customer_email,
+        confirmed: false,
+        code: b.code,
+        timeText: "",
+        message:
+          (input.message ? input.message + "\n\n" : "") +
+          "가능한 시간을 안내드려요. 예약 조회 화면에서 원하는 시간을 선택해주세요.",
+        siteUrl,
+      });
+    } catch (err) {
+      console.error("[proposeTimes] 이메일 무시:", err);
+    }
+  }
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** 시술 완료 후 결제 안내(금액+e-transfer)를 다시 발송 */
+export async function resendPayment(input: {
+  bookingId: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("bookings")
+    .select("*")
+    .eq("id", input.bookingId)
+    .single();
+  const b = data as Booking | null;
+  if (!b) return { ok: false, error: "DB" };
+  if (b.status !== "completed") return { ok: false, error: "NOT_COMPLETED" };
+  if (!b.customer_email) return { ok: false, error: "NO_EMAIL" };
+
+  try {
+    const [siteUrl, settingsRes] = await Promise.all([
+      getSiteUrl(),
+      sb.from("settings").select("*").eq("id", 1).single(),
+    ]);
+    const s = (settingsRes.data ?? {}) as Record<string, string>;
+    const cur = s.currency || "CAD";
+    const isEn = (await getLocale()) === "en";
+    const finalPrice = Number(b.final_price ?? b.estimated_total) || 0;
+    await notifyCustomerCompleted({
+      to: b.customer_email,
+      code: b.code,
+      serviceText: formatMoney(finalPrice, cur),
+      tipText: formatMoney(b.tip ?? 0, cur),
+      totalText: formatMoney(finalPrice + (b.tip ?? 0), cur),
+      paymentText: (isEn ? s.payment_en : s.payment_ko) || "",
+      etransferEmail: s.etransfer_email || "",
+      etransferNote: (isEn ? s.etransfer_note_en : s.etransfer_note_ko) || "",
+      siteUrl,
+    });
+  } catch (err) {
+    console.error("[resendPayment] 실패:", err);
+    return { ok: false, error: "EMAIL" };
+  }
   return { ok: true };
 }
 
@@ -202,19 +364,18 @@ export async function cancelBooking(input: {
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
-  // 확정 슬롯이 있으면 다시 열기
+  // 점유했던 슬롯들 반납
   const { data: b } = await sb
     .from("bookings")
-    .select("confirmed_slot_id")
+    .select("occupied_slot_ids")
     .eq("id", input.bookingId)
     .single();
-  const slotId = (b as { confirmed_slot_id: string | null } | null)
-    ?.confirmed_slot_id;
-  if (slotId) {
+  const occ = (b as { occupied_slot_ids: string[] } | null)?.occupied_slot_ids;
+  if (occ && occ.length > 0) {
     await sb
       .from("availability_slots")
       .update({ status: "open" })
-      .eq("id", slotId)
+      .in("id", occ)
       .eq("status", "booked");
   }
   const { data: updated, error } = await sb
@@ -222,6 +383,7 @@ export async function cancelBooking(input: {
     .update({
       status: "cancelled",
       confirmed_slot_id: null,
+      occupied_slot_ids: [],
       request_kind: "",
       change_request: "",
       change_requested_at: null,
@@ -310,6 +472,25 @@ export async function addSlot(input: {
   const { error } = await sb
     .from("availability_slots")
     .insert({ starts_at: input.startsAtISO, status: "open" });
+  if (error) return { ok: false, error: "DB" };
+  revalidatePath("/admin/availability");
+  return { ok: true };
+}
+
+/** 여러 슬롯 한번에 추가 (30분 범위 생성 등). 같은 시각은 무시. */
+export async function addSlots(input: {
+  startsAtISOs: string[];
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const uniq = [...new Set((input.startsAtISOs ?? []).filter(Boolean))];
+  if (uniq.length === 0) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("availability_slots")
+    .upsert(
+      uniq.map((iso) => ({ starts_at: iso, status: "open" })),
+      { onConflict: "starts_at", ignoreDuplicates: true },
+    );
   if (error) return { ok: false, error: "DB" };
   revalidatePath("/admin/availability");
   return { ok: true };
@@ -438,6 +619,8 @@ export async function uploadGalleryPhoto(
     String(formData.get("category") ?? "").trim() || "기타";
   const caption_ko = String(formData.get("caption_ko") ?? "").trim();
   const caption_en = String(formData.get("caption_en") ?? "").trim();
+  const priceRaw = String(formData.get("price") ?? "").trim();
+  const price = priceRaw ? Number(priceRaw) || null : null;
 
   if (!(file instanceof File) || file.size === 0)
     return { ok: false, error: "NO_FILE" };
@@ -465,6 +648,7 @@ export async function uploadGalleryPhoto(
     category,
     caption_ko,
     caption_en,
+    price,
   });
   if (error) {
     await sb.storage.from("gallery").remove([path]); // 롤백

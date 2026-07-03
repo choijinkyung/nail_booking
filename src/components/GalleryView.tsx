@@ -3,15 +3,18 @@
 import { useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { GalleryPhoto } from "@/lib/types";
+import { formatMoney } from "@/lib/format";
 
 export function GalleryView({
   photos,
   dict,
   locale,
+  currency,
 }: {
   photos: GalleryPhoto[];
   dict: Dict;
   locale: Locale;
+  currency: string;
 }) {
   const categories = [...new Set(photos.map((p) => p.category))];
   const [active, setActive] = useState<string>("__all__");
@@ -60,9 +63,14 @@ export function GalleryView({
                   className="h-full w-full object-cover"
                 />
               </div>
-              {caption && (
-                <figcaption className="truncate px-2 py-1.5 text-xs text-muted">
-                  {caption}
+              {(caption || p.price != null) && (
+                <figcaption className="flex items-center justify-between gap-1 px-2 py-1.5 text-xs">
+                  <span className="truncate text-muted">{caption}</span>
+                  {p.price != null && (
+                    <span className="shrink-0 font-semibold text-brand-700">
+                      {formatMoney(p.price, currency)}
+                    </span>
+                  )}
                 </figcaption>
               )}
             </figure>

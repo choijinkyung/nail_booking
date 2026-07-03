@@ -11,6 +11,8 @@ import {
   confirmBooking,
   declineBooking,
   dismissRequest,
+  proposeTimes,
+  resendPayment,
 } from "@/app/admin/actions";
 
 interface Props {
@@ -41,6 +43,11 @@ export function AdminBookingCard({
   const [message, setMessage] = useState(booking.admin_message ?? "");
   const [otherSlot, setOtherSlot] = useState("");
   const [showPropose, setShowPropose] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
+  const [offerSlots, setOfferSlots] = useState<string[]>([]);
+  const [showChangeTime, setShowChangeTime] = useState(false);
+  const [changeSlot, setChangeSlot] = useState("");
+  const [resent, setResent] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [finalPrice, setFinalPrice] = useState(
     String(booking.estimated_total ?? 0),
@@ -281,6 +288,58 @@ export function AdminBookingCard({
             </div>
           )}
 
+          {/* 가능시간 안내 (여러 시간 제안 → 손님이 선택) */}
+          <button
+            onClick={() => setShowOffer((v) => !v)}
+            className="text-sm font-medium text-brand-600"
+          >
+            {showOffer ? "▲" : "▼"} {a.proposeTimesBtn}
+          </button>
+          {showOffer && (
+            <div className="rounded-xl border border-brand-100 p-2">
+              <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {openSlots.map((s) => {
+                  const on = offerSlots.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() =>
+                        setOfferSlots((prev) =>
+                          on
+                            ? prev.filter((x) => x !== s.id)
+                            : [...prev, s.id],
+                        )
+                      }
+                      className={`rounded-lg border px-2.5 py-1.5 text-xs ${
+                        on
+                          ? "border-brand-500 bg-brand-500 text-white"
+                          : "border-brand-200 bg-white text-brand-700"
+                      }`}
+                    >
+                      {formatDateTime(s.starts_at, locale)}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                disabled={pending || offerSlots.length === 0}
+                onClick={() =>
+                  run(() =>
+                    proposeTimes({
+                      bookingId: booking.id,
+                      slotIds: offerSlots,
+                      message,
+                    }),
+                  )
+                }
+                className="mt-2 w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                {a.proposeSend}
+              </button>
+            </div>
+          )}
+
           <button
             disabled={pending}
             onClick={() =>
@@ -298,21 +357,61 @@ export function AdminBookingCard({
 
       {/* confirmed 컨트롤 */}
       {booking.status === "confirmed" && !showComplete && (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 space-y-2">
+          <div className="flex gap-2">
+            <button
+              disabled={pending}
+              onClick={() => setShowComplete(true)}
+              className="flex-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              ✅ {a.markCompleted}
+            </button>
+            <button
+              disabled={pending}
+              onClick={() => run(() => cancelBooking({ bookingId: booking.id }))}
+              className="flex-1 rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
+            >
+              {a.cancelBooking}
+            </button>
+          </div>
+          {/* 확정 후에도 시간 변경 가능 */}
           <button
-            disabled={pending}
-            onClick={() => setShowComplete(true)}
-            className="flex-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            onClick={() => setShowChangeTime((v) => !v)}
+            className="text-sm font-medium text-brand-600"
           >
-            ✅ {a.markCompleted}
+            {showChangeTime ? "▲" : "▼"} 🕑 {a.changeTime}
           </button>
-          <button
-            disabled={pending}
-            onClick={() => run(() => cancelBooking({ bookingId: booking.id }))}
-            className="flex-1 rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
-          >
-            {a.cancelBooking}
-          </button>
+          {showChangeTime && (
+            <div className="flex gap-2">
+              <select
+                value={changeSlot}
+                onChange={(e) => setChangeSlot(e.target.value)}
+                className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">{a.chooseConfirmSlot}</option>
+                {openSlots.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {formatDateTime(s.starts_at, locale)}
+                  </option>
+                ))}
+              </select>
+              <button
+                disabled={pending || !changeSlot}
+                onClick={() =>
+                  run(() =>
+                    confirmBooking({
+                      bookingId: booking.id,
+                      slotId: changeSlot,
+                      message,
+                    }),
+                  )
+                }
+                className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                {dict.common.confirm}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -401,6 +500,23 @@ export function AdminBookingCard({
               )}
             </span>
           </div>
+          <button
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const res = await resendPayment({ bookingId: booking.id });
+                if (res.ok) {
+                  setResent(true);
+                  setTimeout(() => setResent(false), 2000);
+                } else {
+                  setErr(dict.booking.errGeneric);
+                }
+              })
+            }
+            className="mt-2 w-full rounded-lg border border-brand-300 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-40"
+          >
+            {resent ? `✓ ${a.resent}` : `💌 ${a.resendPayment}`}
+          </button>
         </div>
       )}
 

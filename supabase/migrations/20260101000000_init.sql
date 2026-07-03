@@ -35,6 +35,9 @@ create table if not exists public.availability_slots (
 );
 create index if not exists availability_slots_starts_at_idx
   on public.availability_slots (starts_at);
+-- 같은 시각 중복 슬롯 방지 (범위 생성 시 중복 무시에 사용)
+create unique index if not exists availability_slots_starts_at_unique
+  on public.availability_slots (starts_at);
 
 -- ── 고객(단골) ─────────────────────────────────────────────
 create table if not exists public.customers (
@@ -73,6 +76,8 @@ create table if not exists public.bookings (
   change_requested_at  timestamptz,                 -- 요청 시각 (있으면 대시보드에 배지 표시)
   request_kind         text default '',             -- '' | 'change' | 'cancel'
   requested_slot_id    uuid references public.availability_slots(id) on delete set null, -- 손님이 희망한 새 시간(변경요청)
+  occupied_slot_ids    uuid[] not null default '{}', -- 확정 시 소요시간만큼 점유한 30분 슬롯들
+  proposed_slot_ids    uuid[] not null default '{}', -- 관리자가 제안한 가능시간(손님이 선택)
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
@@ -89,6 +94,8 @@ alter table public.bookings add column if not exists referral_source text defaul
 alter table public.bookings add column if not exists final_price numeric(10,2);
 alter table public.bookings add column if not exists tip numeric(10,2) not null default 0;
 alter table public.bookings add column if not exists completed_at timestamptz;
+alter table public.bookings add column if not exists occupied_slot_ids uuid[] not null default '{}';
+alter table public.bookings add column if not exists proposed_slot_ids uuid[] not null default '{}';
 create index if not exists bookings_name_idx on public.bookings (lower(customer_name));
 create index if not exists bookings_customer_idx on public.bookings (customer_id);
 create index if not exists bookings_status_idx on public.bookings (status);
@@ -158,10 +165,12 @@ create table if not exists public.gallery_photos (
   category     text not null default '기타', -- 카테고리 (예: 원컬러, 아트, 연장…)
   caption_ko   text default '',
   caption_en   text default '',
+  price        numeric(10,2),               -- (선택) 해당 디자인 가격
   sort_order   int not null default 0,
   created_at   timestamptz not null default now()
 );
 create index if not exists gallery_category_idx on public.gallery_photos (category);
+alter table public.gallery_photos add column if not exists price numeric(10,2);
 
 -- 갤러리 이미지용 공개 스토리지 버킷
 insert into storage.buckets (id, name, public)

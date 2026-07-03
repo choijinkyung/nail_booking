@@ -13,7 +13,7 @@ import {
 } from "@/lib/format";
 import { REFERRAL_KEYS } from "@/lib/i18n";
 import { createBooking } from "@/app/actions";
-import { SlotGroups, groupByDay } from "./SlotGroups";
+import { TimePicker } from "./TimePicker";
 
 interface Props {
   locale: Locale;
@@ -36,8 +36,10 @@ export function BookingWizard(props: Props) {
 
   const [step, setStep] = useState(0);
   const [qty, setQty] = useState<Record<string, number>>({});
-  const [preferred, setPreferred] = useState<string>("");
-  const [alts, setAlts] = useState<string[]>([]);
+  // 고른 시간(순서 유지): [0] = 1지망, 나머지 = 대체
+  const [pickedTimes, setPickedTimes] = useState<string[]>([]);
+  const preferred = pickedTimes[0] ?? "";
+  const alts = pickedTimes.slice(1);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
@@ -63,8 +65,6 @@ export function BookingWizard(props: Props) {
     [selectedServices],
   );
 
-  const slotsByDay = useMemo(() => groupByDay(slots), [slots]);
-
   function toggleService(s: Service) {
     setQty((prev) => {
       const next = { ...prev };
@@ -80,20 +80,9 @@ export function BookingWizard(props: Props) {
       return { ...prev, [id]: val };
     });
   }
-  function pickPreferred(id: string) {
-    setPreferred(id);
-    setAlts((prev) => prev.filter((x) => x !== id));
-  }
-  function toggleAlt(id: string) {
-    if (id === preferred) return;
-    setAlts((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
-
   function validateStep(s: number): string {
     if (s === 0 && selectedServices.length === 0) return dict.booking.errService;
-    if (s === 1 && !preferred) return dict.booking.errPreferred;
+    if (s === 1 && pickedTimes.length === 0) return dict.booking.errPreferred;
     if (s === 2) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
@@ -315,44 +304,21 @@ export function BookingWizard(props: Props) {
           </div>
         )}
 
-        {/* Step 1: 시간 */}
+        {/* Step 1: 시간 (캘린더 → 30분 단위 시간) */}
         {step === 1 && (
           <div>
-            {slots.length === 0 ? (
-              <p className="rounded-xl bg-brand-50 p-4 text-sm text-brand-700">
-                {dict.booking.noSlots}
-              </p>
-            ) : (
-              <>
-                <p className="mb-2 text-sm font-semibold text-brand-800">
-                  {dict.booking.pickPreferred}
-                </p>
-                <SlotGroups
-                  slotsByDay={slotsByDay}
-                  locale={locale}
-                  selectedIds={preferred ? [preferred] : []}
-                  onPick={pickPreferred}
-                  badge={dict.booking.preferredBadge}
-                  badgeClass="bg-brand-600"
-                />
-
-                <p className="mb-2 mt-6 text-sm font-semibold text-brand-800">
-                  {dict.booking.pickAlternatives}
-                </p>
-                <p className="mb-2 text-xs text-muted">
-                  {dict.booking.alternativesHint}
-                </p>
-                <SlotGroups
-                  slotsByDay={slotsByDay}
-                  locale={locale}
-                  selectedIds={alts}
-                  disabledIds={preferred ? [preferred] : []}
-                  onPick={toggleAlt}
-                  badge={dict.booking.altBadge}
-                  badgeClass="bg-brand-400"
-                />
-              </>
-            )}
+            <p className="mb-1 text-sm font-semibold text-brand-800">
+              {dict.booking.pickTimes}
+            </p>
+            <p className="mb-3 text-xs text-muted">{dict.booking.pickTimesHint}</p>
+            <TimePicker
+              slots={slots}
+              durationMin={totalDuration || 30}
+              selected={pickedTimes}
+              onChange={setPickedTimes}
+              dict={dict}
+              locale={locale}
+            />
           </div>
         )}
 

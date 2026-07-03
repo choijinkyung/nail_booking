@@ -80,6 +80,8 @@ export interface Booking {
   change_requested_at: string | null;
   request_kind: "" | "change" | "cancel";
   requested_slot_id: string | null;
+  occupied_slot_ids: string[];
+  proposed_slot_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +92,7 @@ export interface BookingWithSlots extends Booking {
   confirmed_slot: AvailabilitySlot | null;
   alternative_slots: AvailabilitySlot[];
   requested_slot: AvailabilitySlot | null;
+  proposed_slots: AvailabilitySlot[];
 }
 
 export interface GalleryPhoto {
@@ -99,6 +102,7 @@ export interface GalleryPhoto {
   category: string;
   caption_ko: string;
   caption_en: string;
+  price: number | null;
   sort_order: number;
   created_at: string;
 }

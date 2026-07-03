@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot } from "@/lib/types";
 import { formatDateHeading, formatTimeOnly, localInputToISO, slotDayKey } from "@/lib/format";
-import { addSlot, deleteSlot, setSlotStatus } from "@/app/admin/actions";
+import { addSlot, addSlots, deleteSlot, setSlotStatus } from "@/app/admin/actions";
 
 export function AvailabilityManager({
   slots,
@@ -19,6 +19,9 @@ export function AvailabilityManager({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useState("");
+  const [rDate, setRDate] = useState("");
+  const [rStart, setRStart] = useState("10:00");
+  const [rEnd, setREnd] = useState("20:00");
   const [err, setErr] = useState("");
   const a = dict.admin;
 
@@ -46,6 +49,25 @@ export function AvailabilityManager({
     });
   }
 
+  function submitRange() {
+    if (!rDate || !rStart || !rEnd) return;
+    const [sh, sm] = rStart.split(":").map(Number);
+    const [eh, em] = rEnd.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    if (endMin <= startMin) {
+      setErr(dict.booking.errGeneric);
+      return;
+    }
+    const isos: string[] = [];
+    for (let m = startMin; m < endMin; m += 30) {
+      const hh = String(Math.floor(m / 60)).padStart(2, "0");
+      const mm = String(m % 60).padStart(2, "0");
+      isos.push(localInputToISO(`${rDate}T${hh}:${mm}`));
+    }
+    run(() => addSlots({ startsAtISOs: isos }));
+  }
+
   const open = groupByDay(slots.filter((s) => s.status === "open"));
   const blocked = slots.filter((s) => s.status === "blocked");
   const booked = groupByDay(slots.filter((s) => s.status === "booked"));
@@ -70,6 +92,50 @@ export function AvailabilityManager({
             {a.addSlotBtn}
           </button>
         </div>
+      </div>
+
+      {/* 범위로 30분 간격 생성 */}
+      <div className="mt-3 rounded-2xl border border-brand-100 bg-white p-4">
+        <p className="mb-1 text-sm font-semibold text-brand-800">{a.addRange}</p>
+        <p className="mb-2 text-xs text-muted">{a.slotUnitNote}</p>
+        <div className="grid grid-cols-3 gap-2">
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{a.rangeDate}</span>
+            <input
+              type="date"
+              value={rDate}
+              onChange={(e) => setRDate(e.target.value)}
+              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{a.rangeStart}</span>
+            <input
+              type="time"
+              step={1800}
+              value={rStart}
+              onChange={(e) => setRStart(e.target.value)}
+              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{a.rangeEnd}</span>
+            <input
+              type="time"
+              step={1800}
+              value={rEnd}
+              onChange={(e) => setREnd(e.target.value)}
+              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+        </div>
+        <button
+          onClick={submitRange}
+          disabled={pending || !rDate}
+          className="mt-2 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {a.rangeGenerate}
+        </button>
       </div>
 
       {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
