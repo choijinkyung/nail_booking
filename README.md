@@ -1,7 +1,10 @@
-# 💅 홈 네일 예약 (Home Nail Booking)
+# 💅 Zenna Nail
 
 사업자 등록 없이 **집에서 프리랜서로 네일을 하는 분**을 위한 예약·CS 관리 앱입니다.
 구글 예약 같은 사업자용 시스템을 쓸 수 없는 개인을 위해 만들었어요.
+디자인 무드: **Nude / Quiet Luxury (모카·에스프레소)**.
+
+기본 메뉴: 원컬러(젤네일) $35 · 프렌치 $45 · 연장 손가락당 $5 · 제거 $5 (관리자가 언제든 수정)
 
 - 📱 **모바일 우선 · 반응형**
 - 🇰🇷🇺🇸 **한국어 / 영어 전환**
@@ -99,10 +102,29 @@ npm run dev       # http://localhost:3000
    - (선택) `NEXT_PUBLIC_SITE_URL` 에 실제 도메인을 넣으면 이메일 링크가 정확해집니다.
 3. Deploy 🚀
 
-## 🔧 CI/CD · Docker · 보안
+## 🔌 Supabase 연결 방식 — 어떤 pooler가 필요한가?
+**이 앱 자체는 pooler(Direct/Session/Transaction) 연결 문자열이 전혀 필요 없습니다.**
+앱은 Supabase JS 클라이언트로 **REST(HTTPS) API** 를 통해 접근하므로, 필요한 건 URL + anon key + service_role key 뿐이에요.
+
+pooler는 **Postgres에 직접 연결하는 경우**(예: 마이그레이션 CI, Prisma/Drizzle 같은 ORM)에만 씁니다. 정리하면:
+
+| 용도 | 무엇을 쓰나 |
+|---|---|
+| **앱 런타임** (이 프로젝트) | 아무 pooler도 필요 없음 — URL + 키만 |
+| **DB 마이그레이션 CI** (`supabase db push`) | **Session pooler** 문자열 사용 (아래) |
+| 서버리스에서 ORM 직접 연결 | Transaction pooler (port 6543) |
+| 장기 실행 서버 / 로컬 psql | Direct 또는 Session pooler |
+
+## 🚀 자동 배포 (push 하면 자동 반영)
+- **코드 배포 (앱)**: [Vercel](https://vercel.com)에서 이 repo를 한 번 Import 하면, 이후 `main` 에 **push 할 때마다 자동 배포**됩니다. (PR은 프리뷰 배포) — 별도 설정 불필요.
+- **DB 배포 (스키마 변경)**: `.github/workflows/db-migrate.yml` 이 `supabase/migrations/**` 변경을 감지해 push 시 **Supabase DB에 자동 적용**합니다.
+  - 스키마를 바꾸려면 `supabase/migrations/` 에 새 `.sql` 파일을 추가하고 push 하세요.
+  - **필요한 GitHub Secret 1개** (repo → Settings → Secrets and variables → Actions → New):
+    - `SUPABASE_DB_URL` = Supabase → Project Settings → Database → Connection string → **Session pooler** 문자열 (`[YOUR-PASSWORD]` 를 실제 DB 비밀번호로 치환)
+
+## 🔧 CI · Docker · 보안
 - **CI**: `.github/workflows/ci.yml` — push/PR 마다 lint + 타입체크 + 빌드 검증. (Supabase 시크릿은 빌드에 불필요)
-- **CD**: Vercel의 GitHub 연동이 `main` 푸시를 자동 배포합니다. (별도 배포 워크플로우 불필요)
-- **Docker**(선택, 자가 호스팅용): `docker build -t nail-booking . && docker run -p 3000:3000 --env-file .env.local nail-booking`
+- **Docker**(선택, 자가 호스팅용): `docker build -t zenna-nail . && docker run -p 3000:3000 --env-file .env.local zenna-nail`
 - **보안**:
   - 시크릿(`SUPABASE_SERVICE_ROLE_KEY` 등)은 `.env*`로 git에서 제외(`.env.example`만 커밋).
   - `service_role` 키는 `server-only`로 서버에서만 사용, 브라우저 노출 불가.

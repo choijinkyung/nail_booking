@@ -4,7 +4,7 @@ import { Resend } from "resend";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL ?? "";
 const EMAIL_FROM =
-  process.env.EMAIL_FROM ?? "Nail Booking <onboarding@resend.dev>";
+  process.env.EMAIL_FROM ?? "Zenna Nail <onboarding@resend.dev>";
 
 function client(): Resend | null {
   if (!RESEND_API_KEY) return null;
@@ -49,14 +49,14 @@ export async function notifyAdminNewBooking(input: {
   if (!ADMIN_EMAIL) return;
   await safeSend({
     to: ADMIN_EMAIL,
-    subject: `🩷 새 예약 요청 · ${input.customerName} (${input.code})`,
+    subject: `🤎 새 예약 요청 · ${input.customerName} (${input.code})`,
     html: wrap(`
       <h2 style="margin:0 0 12px">새 예약 요청이 도착했어요</h2>
       <p style="margin:4px 0"><b>고객</b> ${input.customerName} (${input.contact})</p>
       <p style="margin:4px 0"><b>시술</b> ${input.servicesText}</p>
       <p style="margin:4px 0"><b>1지망 시간</b> ${input.preferredText}</p>
       <p style="margin:4px 0"><b>코드</b> ${input.code}</p>
-      <p style="margin:16px 0 0"><a href="${input.siteUrl}/admin" style="background:#db2777;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">관리자에서 확인하기</a></p>
+      <p style="margin:16px 0 0"><a href="${input.siteUrl}/admin" style="background:#8a5a44;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">관리자에서 확인하기</a></p>
     `),
   });
 }
@@ -79,8 +79,8 @@ export async function notifyAdminBookingUpdate(input: {
       <h2 style="margin:0 0 12px">${isCancel ? "손님이 예약을 취소했어요" : "손님이 예약 변경을 요청했어요"}</h2>
       <p style="margin:4px 0"><b>고객</b> ${input.customerName} (${input.contact})</p>
       <p style="margin:4px 0"><b>코드</b> ${input.code}</p>
-      ${input.message ? `<p style="margin:12px 0;padding:12px;background:#fdf2f8;border-radius:8px">${input.message}</p>` : ""}
-      <p style="margin:16px 0 0"><a href="${input.siteUrl}/admin" style="background:#db2777;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">관리자에서 확인하기</a></p>
+      ${input.message ? `<p style="margin:12px 0;padding:12px;background:#f2e9e1;border-radius:8px">${input.message}</p>` : ""}
+      <p style="margin:16px 0 0"><a href="${input.siteUrl}/admin" style="background:#8a5a44;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">관리자에서 확인하기</a></p>
     `),
   });
 }
@@ -106,8 +106,8 @@ export async function notifyCustomerResult(input: {
           ? `<p style="margin:4px 0"><b>확정 시간</b> ${input.timeText}</p>`
           : ""
       }
-      ${input.message ? `<p style="margin:12px 0;padding:12px;background:#fdf2f8;border-radius:8px">${input.message}</p>` : ""}
-      <p style="margin:16px 0 0"><a href="${input.siteUrl}/status?code=${input.code}" style="background:#db2777;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">예약 상세 보기</a></p>
+      ${input.message ? `<p style="margin:12px 0;padding:12px;background:#f2e9e1;border-radius:8px">${input.message}</p>` : ""}
+      <p style="margin:16px 0 0"><a href="${input.siteUrl}/status?code=${input.code}" style="background:#8a5a44;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">예약 상세 보기</a></p>
     `),
   });
 }

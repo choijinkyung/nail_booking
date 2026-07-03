@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #fdf2f8;
-  --color-brand-100: #fce7f3;
-  --color-brand-200: #fbcfe8;
-  --color-brand-300: #f9a8d4;
-  --color-brand-400: #f472b6;
-  --color-brand-500: #ec4899;
-  --color-brand-600: #db2777;
-  --color-brand-700: #be185d;
-  --color-brand-800: #9d174d;
+  /* Zenna Nail — Nude / Quiet Luxury (mocha & espresso) */
+  --color-brand-50: #faf5f0;
+  --color-brand-100: #f2e9e1;
+  --color-brand-200: #e7d6c9;
+  --color-brand-300: #d6bba8;
+  --color-brand-400: #bf9a83;
+  --color-brand-500: #a47864;
+  --color-brand-600: #8a5a44;
+  --color-brand-700: #6e4632;
+  --color-brand-800: #4a2f22;
 
-  --color-ink: #3f2a37;
-  --color-muted: #8b7280;
+  --color-ink: #2b2420;
+  --color-muted: #8c7b6e;
 
   --font-sans:
     "Pretendard", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont,
@@ -20,7 +21,7 @@
 }
 
 :root {
-  --background: #fff7fb;
+  --background: #fbf7f2;
 }
 
 html {
@@ -32,13 +33,12 @@ html {
 body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(1200px 600px at 100% -10%, #fde7f2 0%, transparent 55%),
-    radial-gradient(900px 500px at -10% 0%, #fce7f3 0%, transparent 50%),
+    radial-gradient(1200px 600px at 100% -10%, #f4e9dd 0%, transparent 55%),
+    radial-gradient(900px 520px at -10% 0%, #efe3d6 0%, transparent 52%),
     var(--background);
   min-height: 100dvh;
 }
 
-/* 모바일 탭 하이라이트 최소화 */
 button,
 a {
   -webkit-tap-highlight-color: transparent;

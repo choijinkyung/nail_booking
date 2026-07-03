@@ -1,0 +1,25 @@
+name: DB Migrate
+
+# supabase/migrations/** 가 바뀌어 main 에 푸시되면 Supabase DB에 자동 적용됩니다.
+# 필요한 GitHub Secret (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL = Supabase → Project Settings → Database → Connection string
+#                     의 "Session pooler" 문자열 ([YOUR-PASSWORD] 를 실제 DB 비밀번호로 치환)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply migrations to Supabase
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

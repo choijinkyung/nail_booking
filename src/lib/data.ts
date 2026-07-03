@@ -13,8 +13,8 @@ import type {
 // Supabase 미설정 시 랜딩이 깨지지 않도록 하는 기본값 (schema.sql 기본값과 동일)
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,
-  shop_name_ko: "홈 네일",
-  shop_name_en: "Home Nail",
+  shop_name_ko: "Zenna Nail",
+  shop_name_en: "Zenna Nail",
   location_ko: "Surrey Central 인근 (정확한 주소는 예약 확정 후 안내드려요)",
   location_en: "Near Surrey Central (exact address shared after confirmation)",
   notice_ko: "반려동물(강아지·고양이)이 있어 알러지가 있으신 분은 방문이 어렵습니다.",

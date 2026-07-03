@@ -12,7 +12,7 @@ export function normalizeLocale(value: string | undefined | null): Locale {
 
 const ko = {
   common: {
-    appName: "홈 네일 예약",
+    appName: "네일 예약",
     book: "예약하기",
     lookup: "예약 조회",
     back: "뒤로",
@@ -244,7 +244,7 @@ export type Dict = typeof ko;
 
 const en: Dict = {
   common: {
-    appName: "Home Nail Booking",
+    appName: "Nail Booking",
     book: "Book",
     lookup: "My Booking",
     back: "Back",
