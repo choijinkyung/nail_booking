@@ -82,6 +82,8 @@ export interface Booking {
   requested_slot_id: string | null;
   occupied_slot_ids: string[];
   proposed_slot_ids: string[];
+  reference_url: string;
+  reference_path: string;
   created_at: string;
   updated_at: string;
 }

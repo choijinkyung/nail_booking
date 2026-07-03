@@ -23,6 +23,30 @@ export async function setLocale(locale: string) {
   });
 }
 
+/** 예약 시 레퍼런스 사진 업로드 (공개 — 이미지/10MB 제한) */
+export async function uploadReferenceImage(
+  formData: FormData,
+): Promise<{ ok: true; url: string; path: string } | { ok: false }> {
+  if (!isSupabaseAdminConfigured()) return { ok: false };
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false };
+  if (!file.type.startsWith("image/")) return { ok: false };
+  if (file.size > 10 * 1024 * 1024) return { ok: false };
+  const sb = createSupabaseAdminClient();
+  const ext = (file.name.split(".").pop() ?? "jpg")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 5);
+  const path = `refs/${crypto.randomUUID()}.${ext || "jpg"}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error } = await sb.storage
+    .from("gallery")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (error) return { ok: false };
+  const { data: pub } = sb.storage.from("gallery").getPublicUrl(path);
+  return { ok: true, url: pub.publicUrl, path };
+}
+
 export interface CreateBookingInput {
   services: { service_id: string; quantity: number }[];
   preferred_slot_id: string;
@@ -32,6 +56,8 @@ export interface CreateBookingInput {
   customer_email?: string;
   customer_password: string; // 예약 확인용 (이름+비밀번호 조회)
   referral_source?: string;
+  reference_url?: string;
+  reference_path?: string;
   note?: string;
 }
 
@@ -170,6 +196,8 @@ export async function createBooking(
       customer_contact: contact,
       customer_email: email,
       referral_source: referral,
+      reference_url: (input.reference_url ?? "").trim(),
+      reference_path: (input.reference_path ?? "").trim(),
       lookup_password_hash: passwordHash,
       lookup_password_salt: salt,
       services: lines,

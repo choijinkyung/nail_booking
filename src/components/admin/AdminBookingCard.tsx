@@ -192,6 +192,25 @@ export function AdminBookingCard({
         </p>
       )}
 
+      {booking.reference_url && (
+        <a
+          href={booking.reference_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={booking.reference_url}
+            alt="reference"
+            className="h-24 w-24 rounded-lg border border-brand-100 object-cover"
+          />
+          <span className="mt-0.5 block text-[11px] text-muted">
+            📎 {dict.booking.reference.split(" (")[0]}
+          </span>
+        </a>
+      )}
+
       {/* 확정 시간 (confirmed) */}
       {booking.status === "confirmed" && booking.confirmed_slot && (
         <p className="mt-3 rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-800">

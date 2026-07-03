@@ -12,7 +12,7 @@ import {
   unitLabel,
 } from "@/lib/format";
 import { REFERRAL_KEYS } from "@/lib/i18n";
-import { createBooking } from "@/app/actions";
+import { createBooking, uploadReferenceImage } from "@/app/actions";
 import { TimePicker } from "./TimePicker";
 
 interface Props {
@@ -45,6 +45,7 @@ export function BookingWizard(props: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [referral, setReferral] = useState("");
+  const [refFile, setRefFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
@@ -121,6 +122,18 @@ export function BookingWizard(props: Props) {
     }
     setError("");
     startTransition(async () => {
+      // 레퍼런스 사진 먼저 업로드 (있으면)
+      let reference_url = "";
+      let reference_path = "";
+      if (refFile) {
+        const fd = new FormData();
+        fd.append("file", refFile);
+        const up = await uploadReferenceImage(fd);
+        if (up.ok) {
+          reference_url = up.url;
+          reference_path = up.path;
+        }
+      }
       const res = await createBooking({
         services: selectedServices.map((s) => ({
           service_id: s.id,
@@ -133,6 +146,8 @@ export function BookingWizard(props: Props) {
         customer_email: email,
         customer_password: password,
         referral_source: referral,
+        reference_url,
+        reference_path,
         note,
       });
       if (res.ok) setResultCode(res.code);
@@ -372,6 +387,22 @@ export function BookingWizard(props: Props) {
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label={dict.booking.reference}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setRefFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-brand-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-700"
+              />
+              {refFile && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={URL.createObjectURL(refFile)}
+                  alt="reference"
+                  className="mt-2 h-24 w-24 rounded-lg object-cover"
+                />
+              )}
             </Field>
             <Field label={dict.booking.memo}>
               <textarea

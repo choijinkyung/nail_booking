@@ -78,6 +78,8 @@ create table if not exists public.bookings (
   requested_slot_id    uuid references public.availability_slots(id) on delete set null, -- 손님이 희망한 새 시간(변경요청)
   occupied_slot_ids    uuid[] not null default '{}', -- 확정 시 소요시간만큼 점유한 30분 슬롯들
   proposed_slot_ids    uuid[] not null default '{}', -- 관리자가 제안한 가능시간(손님이 선택)
+  reference_url        text default '',              -- 예약 시 첨부한 레퍼런스 사진
+  reference_path       text default '',
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
@@ -96,6 +98,8 @@ alter table public.bookings add column if not exists tip numeric(10,2) not null 
 alter table public.bookings add column if not exists completed_at timestamptz;
 alter table public.bookings add column if not exists occupied_slot_ids uuid[] not null default '{}';
 alter table public.bookings add column if not exists proposed_slot_ids uuid[] not null default '{}';
+alter table public.bookings add column if not exists reference_url text default '';
+alter table public.bookings add column if not exists reference_path text default '';
 create index if not exists bookings_name_idx on public.bookings (lower(customer_name));
 create index if not exists bookings_customer_idx on public.bookings (customer_id);
 create index if not exists bookings_status_idx on public.bookings (status);

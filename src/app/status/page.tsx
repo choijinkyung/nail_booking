@@ -101,6 +101,22 @@ export default async function StatusPage({
               locale={locale}
             />
 
+            {booking.reference_url && (
+              <Card>
+                <p className="mb-2 text-xs font-semibold uppercase text-brand-400">
+                  📎 {dict.booking.reference.split(" (")[0]}
+                </p>
+                <a href={booking.reference_url} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={booking.reference_url}
+                    alt="reference"
+                    className="h-32 w-32 rounded-lg border border-brand-100 object-cover"
+                  />
+                </a>
+              </Card>
+            )}
+
             {/* 확정 시간 */}
             {booking.status === "confirmed" && booking.confirmed_slot && (
               <Card className="border-green-200 bg-green-50/60">
