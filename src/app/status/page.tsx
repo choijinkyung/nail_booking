@@ -169,12 +169,33 @@ export default async function StatusPage({
                   </li>
                 ))}
               </ul>
-              <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
-                <span>{dict.booking.estimated}</span>
-                <span>
-                  {formatMoney(booking.estimated_total, settings.currency)}
-                </span>
-              </div>
+              {booking.status === "completed" ? (
+                <>
+                  {booking.tip > 0 && (
+                    <div className="mt-2 flex justify-between text-sm text-muted">
+                      <span>{dict.booking.tip}</span>
+                      <span>{formatMoney(booking.tip, settings.currency)}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
+                    <span>{dict.booking.finalTotal}</span>
+                    <span>
+                      {formatMoney(
+                        (booking.final_price ?? booking.estimated_total) +
+                          (booking.tip ?? 0),
+                        settings.currency,
+                      )}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
+                  <span>{dict.booking.estimated}</span>
+                  <span>
+                    {formatMoney(booking.estimated_total, settings.currency)}
+                  </span>
+                </div>
+              )}
             </Card>
 
             {/* 결제 안내 — 시술 완료 후에만 노출 */}

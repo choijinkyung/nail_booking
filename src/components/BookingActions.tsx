@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
-import { submitCustomerRequest } from "@/app/actions";
+import { reRequestBooking, submitCustomerRequest } from "@/app/actions";
 import { Card } from "@/components/ui";
+import { SlotGroups, groupByDay } from "@/components/booking/SlotGroups";
 
 export function BookingActions({
   booking,
@@ -25,10 +26,86 @@ export function BookingActions({
   const [slotId, setSlotId] = useState("");
   const [message, setMessage] = useState("");
   const [err, setErr] = useState("");
+  const [rePreferred, setRePreferred] = useState("");
+  const [reAlts, setReAlts] = useState<string[]>([]);
   const st = dict.status;
+  const slotsByDay = useMemo(() => groupByDay(openSlots), [openSlots]);
+
+  function reRequest() {
+    setErr("");
+    startTransition(async () => {
+      const res = await reRequestBooking({
+        code: booking.code,
+        preferredSlotId: rePreferred,
+        alternativeSlotIds: reAlts,
+      });
+      if (res.ok) router.refresh();
+      else setErr(st.requestErr);
+    });
+  }
+
+  // 예약 불가(declined): 처음부터 다시 하지 않고 다른 시간으로 재요청
+  if (booking.status === "declined") {
+    return (
+      <Card>
+        <p className="text-sm font-semibold text-brand-800">
+          {st.reRequestOpen}
+        </p>
+        <p className="mt-1 mb-3 text-xs text-muted">{st.reRequestDesc}</p>
+        {openSlots.length === 0 ? (
+          <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-700">
+            {dict.booking.noSlots}
+          </p>
+        ) : (
+          <>
+            <p className="mb-2 text-sm font-semibold text-brand-800">
+              {dict.booking.pickPreferred}
+            </p>
+            <SlotGroups
+              slotsByDay={slotsByDay}
+              locale={locale}
+              selectedIds={rePreferred ? [rePreferred] : []}
+              onPick={(id) => {
+                setRePreferred(id);
+                setReAlts((prev) => prev.filter((x) => x !== id));
+              }}
+              badge={dict.booking.preferredBadge}
+              badgeClass="bg-brand-600"
+            />
+            <p className="mb-2 mt-5 text-sm font-semibold text-brand-800">
+              {dict.booking.pickAlternatives}
+            </p>
+            <SlotGroups
+              slotsByDay={slotsByDay}
+              locale={locale}
+              selectedIds={reAlts}
+              disabledIds={rePreferred ? [rePreferred] : []}
+              onPick={(id) =>
+                setReAlts((prev) =>
+                  prev.includes(id)
+                    ? prev.filter((x) => x !== id)
+                    : [...prev, id],
+                )
+              }
+              badge={dict.booking.altBadge}
+              badgeClass="bg-brand-400"
+            />
+            <button
+              onClick={reRequest}
+              disabled={pending || !rePreferred}
+              className="mt-4 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {pending ? dict.booking.submitting : st.reRequestSubmit}
+            </button>
+          </>
+        )}
+        {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+      </Card>
+    );
+  }
 
   // 종료된 예약이면 액션 없음
-  if (["cancelled", "declined", "completed"].includes(booking.status)) {
+  if (["cancelled", "completed"].includes(booking.status)) {
     return null;
   }
 

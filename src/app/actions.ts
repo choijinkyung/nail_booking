@@ -228,6 +228,78 @@ export async function lookupByNamePassword(input: {
   return code ? { ok: true, code } : { ok: false };
 }
 
+// ── 예약 불가(declined) 후 다른 시간으로 다시 요청 ──
+export async function reRequestBooking(input: {
+  code: string;
+  preferredSlotId: string;
+  alternativeSlotIds: string[];
+}): Promise<CustomerRequestResult> {
+  if (!isSupabaseAdminConfigured()) return { ok: false, error: "SETUP" };
+  const code = (input.code ?? "").trim().toUpperCase();
+  if (!code) return { ok: false, error: "NOT_FOUND" };
+  if (!input.preferredSlotId) return { ok: false, error: "NO_PREFERRED" };
+
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("bookings")
+    .select("*")
+    .eq("code", code)
+    .single();
+  const b = data as Booking | null;
+  if (!b) return { ok: false, error: "NOT_FOUND" };
+  if (b.status !== "declined") return { ok: false, error: "CLOSED" };
+
+  // 희망 시간은 관리자가 연(open) 미래 슬롯만 허용
+  const nowIso = new Date().toISOString();
+  const wanted = [input.preferredSlotId, ...(input.alternativeSlotIds ?? [])];
+  const { data: slotRows } = await sb
+    .from("availability_slots")
+    .select("id, status, starts_at")
+    .in("id", wanted);
+  const valid = new Set(
+    ((slotRows as { id: string; status: string; starts_at: string }[]) ?? [])
+      .filter((s) => s.status === "open" && s.starts_at >= nowIso)
+      .map((s) => s.id),
+  );
+  if (!valid.has(input.preferredSlotId)) return { ok: false, error: "SLOT_TAKEN" };
+  const alts = [...new Set(input.alternativeSlotIds ?? [])].filter(
+    (id) => id !== input.preferredSlotId && valid.has(id),
+  );
+
+  const { error } = await sb
+    .from("bookings")
+    .update({
+      status: "pending",
+      preferred_slot_id: input.preferredSlotId,
+      alternative_slot_ids: alts,
+      admin_message: "",
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", b.id);
+  if (error) return { ok: false, error: "DB" };
+
+  try {
+    const siteUrl = await getSiteUrl();
+    await notifyAdminBookingUpdate({
+      code: b.code,
+      customerName: b.customer_name,
+      contact: b.customer_contact,
+      kind: "change",
+      message: "예약 불가 안내 후 다른 시간으로 다시 요청했어요.",
+      siteUrl,
+    });
+  } catch (err) {
+    console.error("[reRequestBooking] 알림 무시:", err);
+  }
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 // ── 손님의 변경/취소 "요청" (실제 변경은 관리자 승인 시에만) ──
 export type CustomerRequestResult =
   | { ok: true }
