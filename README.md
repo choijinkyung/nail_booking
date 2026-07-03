@@ -17,7 +17,8 @@
 - 💵 결제 안내(현금 / e-transfer), 위치 안내, 가격표 관리 — 모두 관리자가 수정
 
 ## 기술 스택
-Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres + Auth) · Resend(이메일, 선택)
+Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres + Storage) · Resend(이메일, 선택)
+관리자 로그인은 Supabase Auth 대신 **환경변수 기반 이름+비밀번호(HMAC 쿠키 세션)** 를 사용합니다.
 
 ---
 
@@ -32,48 +33,52 @@ Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Postgres +
    - `anon` `public` key
    - `service_role` `secret` key ← 서버 전용, 절대 외부 노출 금지
 
-### 2. 관리자(사장님) 계정 만들기
-Supabase 대시보드 → **Authentication → Users → Add user**
-- 이메일/비밀번호 입력, **Auto Confirm User** 체크 후 생성
-- 이 이메일/비밀번호로 `/admin/login` 에서 로그인합니다.
-
-### 3. 환경변수 채우기
+### 2. 환경변수 채우기
 [`.env.local`](.env.local) 파일을 열어 값을 채웁니다. (`.env.example` 참고)
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL="https://xxxx.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="ey...."
 SUPABASE_SERVICE_ROLE_KEY="ey...."   # service_role (secret)
+
+# 관리자 로그인 (영문 이름 + 비밀번호로 /admin 접속) — Supabase 유저 생성 불필요!
+ADMIN_FIRST_NAME="Jinkyung"
+ADMIN_LAST_NAME="Choi"
+ADMIN_PASSWORD="원하는-비밀번호"
+ADMIN_SESSION_SECRET="아무-긴-랜덤문자열"   # 예: 터미널에서  openssl rand -hex 32
 ```
 
-### 4. (선택) 이메일 알림 켜기
+> 관리자 로그인은 이제 **영문 이름(First/Last) + 비밀번호**로 합니다. Supabase에 유저를 따로 만들 필요가 없어요. 위에 적은 이름·비밀번호로 `/admin/login` 에서 로그인합니다.
+
+### 3. (선택) 이메일 알림 켜기
 새 예약 요청을 이메일로 받고 싶다면:
 1. https://resend.com 에서 API Key 발급
 2. `.env.local` 에 추가
    ```bash
    RESEND_API_KEY="re_..."
    ADMIN_NOTIFICATION_EMAIL="사장님이메일@example.com"   # 알림 받을 주소
-   EMAIL_FROM="Nail Booking <onboarding@resend.dev>"    # 도메인 인증 전엔 이 값 사용 가능
+   EMAIL_FROM="Zenna Nail <onboarding@resend.dev>"     # 도메인 인증 전엔 이 값 사용 가능
    ```
 > 값이 비어 있으면 이메일은 자동으로 건너뛰고, **관리자 대시보드 알림은 계속 동작**합니다.
 
-### 5. 실행
+### 4. 실행
 ```bash
 npm install
 npm run dev       # http://localhost:3000
 ```
 
-> Supabase 값을 채우기 전에도 앱은 실행됩니다. 이 경우 화면에 "먼저 Supabase를 설정해주세요" 안내가 표시돼요.
+> Supabase/관리자 값을 채우기 전에도 앱은 실행됩니다. (설정 안내가 표시됨)
 
 ---
 
 ## 📖 사용 방법
 
 ### 고객 (로그인 불필요)
-- **`/`** 소개·주의사항·가격표·위치·결제 안내
-- **`/book`** 시술 선택 → 1지망 + 대체 시간 선택 → 정보 입력 → 안내 동의 → 요청
+- **`/`** 소개·주의사항·가격표·위치
+- **`/book`** 시술 선택 → 1지망 + 대체 시간 선택 → 정보 입력(+ **예약 확인용 비밀번호**) → 안내 동의 → 요청
   - 요청 완료 시 **조회 코드**(예: `3F9K2P`)를 받습니다.
-- **`/status?code=코드`** 예약 진행 상황 조회 (확인 중 / 확정 / 불가) + **변경/취소 요청**
+- **`/status`** 예약 조회 — **예약번호** 또는 **이름 + 비밀번호** 로 확인. 진행 상황(확인 중 / 확정 / 불가) + **변경/취소 요청**
+  - 💳 **결제(e-transfer) 안내는 관리자가 "시술 완료"를 누른 뒤에** 이 화면에 표시됩니다.
   - 변경 요청 시 새 시간은 **사장님이 연 시간(open)** 중에서만 고를 수 있어요.
 - **`/gallery`** 시술 사진 갤러리 (카테고리 탭으로 필터)
 
@@ -122,6 +127,11 @@ pooler는 **Postgres에 직접 연결하는 경우**(예: 마이그레이션 CI,
   - **필요한 GitHub Secret 1개** (repo → Settings → Secrets and variables → Actions → New):
     - `SUPABASE_DB_URL` = Supabase → Project Settings → Database → Connection string → **Session pooler** 문자열 (`[YOUR-PASSWORD]` 를 실제 DB 비밀번호로 치환)
 
+## 🌐 도메인 바꿀 수 있나요? — 네!
+- **무료 기본 주소**: Vercel 배포 시 `프로젝트이름.vercel.app` 이 자동으로 생겨요. 프로젝트 이름을 바꾸면 이 주소도 바뀝니다. (Vercel → Project → Settings → General / Domains)
+- **내 도메인 연결**: `zennanail.com` 같은 도메인을 구입(가비아·Namecheap·GoDaddy 등)한 뒤, Vercel → Settings → **Domains → Add** 에서 연결하면 됩니다. (DNS 설정은 Vercel이 안내)
+- 도메인을 바꾸면 이메일 링크가 정확하도록 Vercel 환경변수에 `NEXT_PUBLIC_SITE_URL="https://내도메인"` 을 넣어주세요.
+
 ## 🔧 CI · Docker · 보안
 - **CI**: `.github/workflows/ci.yml` — push/PR 마다 lint + 타입체크 + 빌드 검증. (Supabase 시크릿은 빌드에 불필요)
 - **Docker**(선택, 자가 호스팅용): `docker build -t zenna-nail . && docker run -p 3000:3000 --env-file .env.local zenna-nail`
@@ -129,7 +139,8 @@ pooler는 **Postgres에 직접 연결하는 경우**(예: 마이그레이션 CI,
   - 시크릿(`SUPABASE_SERVICE_ROLE_KEY` 등)은 `.env*`로 git에서 제외(`.env.example`만 커밋).
   - `service_role` 키는 `server-only`로 서버에서만 사용, 브라우저 노출 불가.
   - 보안 헤더(X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS 등) 적용.
-  - 관리자 라우트는 `proxy.ts` 세션 검사 + 각 서버 액션의 `assertAdmin()` 로 이중 보호.
+  - 관리자 세션은 **HMAC 서명된 httpOnly 쿠키**(30일)로 관리하고, 각 서버 액션에서 `assertAdmin()`으로 검증.
+  - 예약 확인용 비밀번호는 평문 저장하지 않고 **솔트 + SHA-256 해시**로 저장.
 
 ## 데이터 구조
 - `services` 시술/가격 · `availability_slots` 가능 시간 · `bookings` 예약 요청 · `settings` 각종 안내(단일 행)

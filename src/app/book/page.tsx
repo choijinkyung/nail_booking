@@ -29,8 +29,6 @@ export default async function BookPage() {
           services={services}
           slots={slots}
           notice={isEn ? settings.notice_en : settings.notice_ko}
-          payment={isEn ? settings.payment_en : settings.payment_ko}
-          etransferEmail={settings.etransfer_email}
           currency={settings.currency}
         />
       </main>

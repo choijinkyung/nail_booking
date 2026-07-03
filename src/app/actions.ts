@@ -8,6 +8,8 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { notifyAdminBookingUpdate, notifyAdminNewBooking } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
+import { hashPassword, makeSalt } from "@/lib/hash";
+import { findBookingCodeByNamePassword } from "@/lib/data";
 import type { Booking, BookingServiceLine, Service } from "@/lib/types";
 
 /** 언어 전환 — 쿠키 설정 후 페이지 새로고침용 */
@@ -27,6 +29,7 @@ export interface CreateBookingInput {
   customer_name: string;
   customer_contact: string;
   customer_email?: string;
+  customer_password: string; // 예약 확인용 (이름+비밀번호 조회)
   note?: string;
 }
 
@@ -55,7 +58,9 @@ export async function createBooking(
   const name = (input.customer_name ?? "").trim();
   const contact = (input.customer_contact ?? "").trim();
   const email = (input.customer_email ?? "").trim();
+  const password = (input.customer_password ?? "").trim();
   if (!name || !contact) return { ok: false, error: "INVALID" };
+  if (password.length < 4) return { ok: false, error: "PASSWORD" };
   if (!input.preferred_slot_id) return { ok: false, error: "NO_PREFERRED" };
   if (!input.services || input.services.length === 0)
     return { ok: false, error: "NO_SERVICE" };
@@ -115,6 +120,8 @@ export async function createBooking(
   );
 
   // 3) 유니크 코드로 insert (충돌 시 재시도)
+  const salt = makeSalt();
+  const passwordHash = hashPassword(password, salt);
   let code = "";
   let inserted = false;
   for (let attempt = 0; attempt < 6 && !inserted; attempt++) {
@@ -124,6 +131,8 @@ export async function createBooking(
       customer_name: name,
       customer_contact: contact,
       customer_email: email,
+      lookup_password_hash: passwordHash,
+      lookup_password_salt: salt,
       services: lines,
       estimated_total: estimatedTotal,
       note: (input.note ?? "").trim(),
@@ -167,6 +176,18 @@ export async function createBooking(
   }
 
   return { ok: true, code };
+}
+
+// ── 이름 + 비밀번호로 예약 조회 (예약 코드 반환) ──
+export async function lookupByNamePassword(input: {
+  name: string;
+  password: string;
+}): Promise<{ ok: true; code: string } | { ok: false }> {
+  const code = await findBookingCodeByNamePassword(
+    input.name ?? "",
+    input.password ?? "",
+  );
+  return code ? { ok: true, code } : { ok: false };
 }
 
 // ── 손님의 변경/취소 "요청" (실제 변경은 관리자 승인 시에만) ──

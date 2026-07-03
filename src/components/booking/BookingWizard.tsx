@@ -19,15 +19,13 @@ interface Props {
   services: Service[];
   slots: AvailabilitySlot[];
   notice: string;
-  payment: string;
-  etransferEmail: string;
   currency: string;
 }
 
 const STEPS = ["step_service", "step_time", "step_info", "step_review"] as const;
 
 export function BookingWizard(props: Props) {
-  const { locale, dict, services, slots, notice, payment, currency } = props;
+  const { locale, dict, services, slots, notice, currency } = props;
   const isEn = locale === "en";
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -39,6 +37,7 @@ export function BookingWizard(props: Props) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
@@ -89,6 +88,7 @@ export function BookingWizard(props: Props) {
     if (s === 2) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
+      if (password.trim().length < 4) return dict.booking.errPassword;
       if (!agree) return dict.booking.errAgree;
     }
     return "";
@@ -129,6 +129,7 @@ export function BookingWizard(props: Props) {
         customer_name: name,
         customer_contact: contact,
         customer_email: email,
+        customer_password: password,
         note,
       });
       if (res.ok) setResultCode(res.code);
@@ -357,6 +358,15 @@ export function BookingWizard(props: Props) {
                 autoComplete="email"
               />
             </Field>
+            <Field label={`${dict.booking.password} *`}>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+                className={inputClass}
+              />
+            </Field>
             <Field label={dict.booking.memo}>
               <textarea
                 value={note}
@@ -369,7 +379,6 @@ export function BookingWizard(props: Props) {
             {/* 안내사항 강조 + 동의 */}
             <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
               <p className="whitespace-pre-line">⚠️ {notice}</p>
-              <p className="mt-2 whitespace-pre-line">💳 {payment}</p>
             </div>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-3">
               <input
@@ -646,6 +655,8 @@ function mapError(code: string, dict: Dict): string {
       return dict.booking.errService;
     case "NO_PREFERRED":
       return dict.booking.errPreferred;
+    case "PASSWORD":
+      return dict.booking.errPassword;
     case "SLOT_TAKEN":
       return dict.booking.noSlots;
     case "SETUP":

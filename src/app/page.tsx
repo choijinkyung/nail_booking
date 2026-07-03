@@ -16,10 +16,6 @@ export default async function LandingPage() {
   const shopName = isEn ? settings.shop_name_en : settings.shop_name_ko;
   const notice = isEn ? settings.notice_en : settings.notice_ko;
   const location = isEn ? settings.location_en : settings.location_ko;
-  const payment = isEn ? settings.payment_en : settings.payment_ko;
-  const etransferNote = isEn
-    ? settings.etransfer_note_en
-    : settings.etransfer_note_ko;
 
   const steps = [
     { icon: "💅", title: dict.landing.step1Title, desc: dict.landing.step1Desc },
@@ -125,25 +121,6 @@ export default async function LandingPage() {
           <SectionTitle>📍 {dict.landing.locationTitle}</SectionTitle>
           <Card>
             <p className="text-sm leading-relaxed text-brand-900">{location}</p>
-          </Card>
-        </section>
-
-        {/* Payment */}
-        <section className="mt-8">
-          <SectionTitle>💳 {dict.landing.paymentTitle}</SectionTitle>
-          <Card>
-            <p className="text-sm leading-relaxed text-brand-900">{payment}</p>
-            {settings.etransfer_email && (
-              <div className="mt-3 rounded-xl bg-brand-50 p-3">
-                <p className="text-xs text-muted">{dict.landing.etransferEmail}</p>
-                <p className="select-all font-semibold text-brand-700">
-                  {settings.etransfer_email}
-                </p>
-                {etransferNote && (
-                  <p className="mt-1 text-xs text-muted">{etransferNote}</p>
-                )}
-              </div>
-            )}
           </Card>
         </section>
 

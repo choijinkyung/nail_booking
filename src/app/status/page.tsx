@@ -6,6 +6,7 @@ import { formatDateTime, formatMoney } from "@/lib/format";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Card } from "@/components/ui";
 import { BookingActions } from "@/components/BookingActions";
+import { StatusLookup } from "@/components/StatusLookup";
 import type { BookingStatus } from "@/lib/types";
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
@@ -55,19 +56,10 @@ export default async function StatusPage({
         </Link>
         <h1 className="mt-2 text-xl font-bold text-brand-800">{st.title}</h1>
 
-        {/* 코드 입력 폼 (JS 없이 GET) */}
-        <form method="get" className="mt-4 flex gap-2">
-          <input
-            name="code"
-            defaultValue={code ?? ""}
-            placeholder={st.codePlaceholder}
-            className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-base uppercase tracking-widest outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-            autoCapitalize="characters"
-          />
-          <button className="shrink-0 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white">
-            {st.lookup}
-          </button>
-        </form>
+        {/* 예약번호 또는 이름+비밀번호로 조회 */}
+        <div className="mt-4">
+          <StatusLookup defaultCode={code} dict={dict} />
+        </div>
 
         {notFound && (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -185,20 +177,36 @@ export default async function StatusPage({
               </div>
             </Card>
 
-            {/* 결제 안내 */}
-            <Card className="bg-brand-50/50">
-              <p className="text-xs font-semibold uppercase text-brand-400">
-                {st.payment}
-              </p>
-              <p className="mt-1 text-sm text-brand-900">
-                {isEn ? settings.payment_en : settings.payment_ko}
-              </p>
-              {settings.etransfer_email && (
-                <p className="mt-1 select-all text-sm font-semibold text-brand-700">
-                  {settings.etransfer_email}
+            {/* 결제 안내 — 시술 완료 후에만 노출 */}
+            {booking.status === "completed" && (
+              <Card className="border-brand-300 bg-brand-50">
+                <p className="font-semibold text-brand-800">
+                  {st.completedPayCard}
                 </p>
-              )}
-            </Card>
+                <p className="mt-2 text-sm text-brand-900">
+                  {isEn ? settings.payment_en : settings.payment_ko}
+                </p>
+                {settings.etransfer_email && (
+                  <div className="mt-3 rounded-xl bg-white p-3">
+                    <p className="text-xs text-muted">
+                      {isEn ? "e-transfer recipient" : "e-transfer 받는 주소"}
+                    </p>
+                    <p className="select-all font-semibold text-brand-700">
+                      {settings.etransfer_email}
+                    </p>
+                    {(isEn
+                      ? settings.etransfer_note_en
+                      : settings.etransfer_note_ko) && (
+                      <p className="mt-1 text-xs text-muted">
+                        {isEn
+                          ? settings.etransfer_note_en
+                          : settings.etransfer_note_ko}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         )}
       </main>

@@ -15,18 +15,30 @@ export function LoginForm({ dict }: { dict: Dict }) {
 
   return (
     <form action={action} className="space-y-3">
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-brand-800">
-          {dict.admin.email}
-        </span>
-        <input
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className={inputClass}
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-brand-800">
+            {dict.admin.firstName}
+          </span>
+          <input
+            name="first_name"
+            required
+            autoComplete="given-name"
+            className={inputClass}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-brand-800">
+            {dict.admin.lastName}
+          </span>
+          <input
+            name="last_name"
+            required
+            autoComplete="family-name"
+            className={inputClass}
+          />
+        </label>
+      </div>
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-brand-800">
           {dict.admin.password}

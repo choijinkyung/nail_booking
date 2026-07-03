@@ -41,6 +41,8 @@ create table if not exists public.bookings (
   customer_name        text not null,
   customer_contact     text not null,               -- 전화 / 카톡 등
   customer_email       text default '',
+  lookup_password_hash text default '',             -- 예약 확인용 비밀번호 해시
+  lookup_password_salt text default '',
   services             jsonb not null default '[]', -- 예약 시점 스냅샷
   estimated_total      numeric(10,2) not null default 0,
   note                 text default '',             -- 고객 메모 (연장 손가락 수 등)
@@ -62,6 +64,9 @@ alter table public.bookings add column if not exists change_request text default
 alter table public.bookings add column if not exists change_requested_at timestamptz;
 alter table public.bookings add column if not exists request_kind text default '';
 alter table public.bookings add column if not exists requested_slot_id uuid references public.availability_slots(id) on delete set null;
+alter table public.bookings add column if not exists lookup_password_hash text default '';
+alter table public.bookings add column if not exists lookup_password_salt text default '';
+create index if not exists bookings_name_idx on public.bookings (lower(customer_name));
 create index if not exists bookings_status_idx on public.bookings (status);
 create index if not exists bookings_created_at_idx on public.bookings (created_at desc);
 

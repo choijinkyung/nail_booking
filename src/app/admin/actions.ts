@@ -2,9 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/auth";
+import {
+  clearAdminSession,
+  setAdminSession,
+  verifyCredentials,
+} from "@/lib/adminAuth";
 import { notifyCustomerResult } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
@@ -18,17 +22,18 @@ export async function signIn(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const email = String(formData.get("email") ?? "").trim();
+  const firstName = String(formData.get("first_name") ?? "");
+  const lastName = String(formData.get("last_name") ?? "");
   const password = String(formData.get("password") ?? "");
-  const sb = await createSupabaseServerClient();
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: "INVALID" };
+  if (!verifyCredentials(firstName, lastName, password)) {
+    return { ok: false, error: "INVALID" };
+  }
+  await setAdminSession();
   redirect("/admin");
 }
 
 export async function signOut() {
-  const sb = await createSupabaseServerClient();
-  await sb.auth.signOut();
+  await clearAdminSession();
   redirect("/admin/login");
 }
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { isSupabaseAdminConfigured } from "./supabase/config";
+import { hashPassword } from "./hash";
 import type {
   AvailabilitySlot,
   Booking,
@@ -109,10 +110,19 @@ async function slotsByIds(
   return map;
 }
 
+/** 클라이언트로 나가면 안 되는 민감 필드 제거 (비밀번호 해시 등) */
+function stripSecret(b: Booking): Booking {
+  const r = { ...b } as Record<string, unknown>;
+  delete r.lookup_password_hash;
+  delete r.lookup_password_salt;
+  return r as unknown as Booking;
+}
+
 function hydrate(
-  b: Booking,
+  raw: Booking,
   slots: Map<string, AvailabilitySlot>,
 ): BookingWithSlots {
+  const b = stripSecret(raw);
   return {
     ...b,
     preferred_slot: b.preferred_slot_id
@@ -171,6 +181,43 @@ export async function getGalleryPhotos(): Promise<GalleryPhoto[]> {
     return (data as GalleryPhoto[]) ?? [];
   } catch {
     return [];
+  }
+}
+
+/** 이름 + 확인용 비밀번호로 예약 코드 찾기 (가장 최근 매칭) */
+export async function findBookingCodeByNamePassword(
+  name: string,
+  password: string,
+): Promise<string | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+  if (!name.trim() || !password) return null;
+  try {
+    const sb = createSupabaseAdminClient();
+    const { data } = await sb
+      .from("bookings")
+      .select("code, lookup_password_hash, lookup_password_salt")
+      .ilike("customer_name", name.trim())
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const rows =
+      (data as {
+        code: string;
+        lookup_password_hash: string;
+        lookup_password_salt: string;
+      }[]) ?? [];
+    for (const row of rows) {
+      if (
+        row.lookup_password_hash &&
+        row.lookup_password_salt &&
+        hashPassword(password, row.lookup_password_salt) ===
+          row.lookup_password_hash
+      ) {
+        return row.code;
+      }
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
