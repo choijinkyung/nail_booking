@@ -4,6 +4,7 @@ import type { Dict } from "@/lib/i18n";
 
 type Tab =
   | "dashboard"
+  | "calendar"
   | "availability"
   | "services"
   | "gallery"
@@ -12,6 +13,7 @@ type Tab =
 const TABS: { key: Tab; href: string; icon: string; label: keyof Dict["admin"] }[] =
   [
     { key: "dashboard", href: "/admin", icon: "📋", label: "nav_dashboard" },
+    { key: "calendar", href: "/admin/calendar", icon: "📅", label: "nav_calendar" },
     {
       key: "availability",
       href: "/admin/availability",
@@ -49,14 +51,14 @@ export function AdminShell({
 
       {/* 하단 탭바 */}
       <nav className="safe-b fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-lg">
+        <div className="mx-auto flex max-w-lg overflow-x-auto">
           {TABS.map((t) => {
             const on = t.key === active;
             return (
               <Link
                 key={t.key}
                 href={t.href}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium ${
+                className={`flex min-w-[62px] flex-1 shrink-0 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
                   on ? "text-brand-700" : "text-muted"
                 }`}
               >

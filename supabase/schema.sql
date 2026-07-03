@@ -49,9 +49,19 @@ create table if not exists public.bookings (
   status               text not null default 'pending', -- pending|confirmed|declined|cancelled|completed
   confirmed_slot_id    uuid references public.availability_slots(id) on delete set null,
   admin_message        text default '',             -- 고객에게 전달할 메시지 (다른 시간 제안 등)
+  change_request       text default '',             -- 손님이 남긴 변경/취소 요청 메시지
+  change_requested_at  timestamptz,                 -- 요청 시각 (있으면 대시보드에 배지 표시)
+  request_kind         text default '',             -- '' | 'change' | 'cancel'
+  requested_slot_id    uuid references public.availability_slots(id) on delete set null, -- 손님이 희망한 새 시간(변경요청)
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
+
+-- 기존 설치본에도 안전하게 컬럼 추가
+alter table public.bookings add column if not exists change_request text default '';
+alter table public.bookings add column if not exists change_requested_at timestamptz;
+alter table public.bookings add column if not exists request_kind text default '';
+alter table public.bookings add column if not exists requested_slot_id uuid references public.availability_slots(id) on delete set null;
 create index if not exists bookings_status_idx on public.bookings (status);
 create index if not exists bookings_created_at_idx on public.bookings (created_at desc);
 

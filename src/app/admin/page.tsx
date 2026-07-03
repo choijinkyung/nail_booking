@@ -19,14 +19,24 @@ export default async function AdminDashboardPage() {
   ]);
 
   const nowIso = new Date().toISOString();
-  const pending = bookings.filter((b) => b.status === "pending");
+  const hasRequest = (b: BookingWithSlots) =>
+    b.request_kind === "change" || b.request_kind === "cancel";
+  // 손님 요청은 최상단에 별도 노출 (중복 방지 위해 아래 섹션에서 제외)
+  const requests = bookings.filter(hasRequest);
+  const pending = bookings.filter(
+    (b) => b.status === "pending" && !hasRequest(b),
+  );
   const upcoming = bookings.filter(
     (b) =>
       b.status === "confirmed" &&
+      !hasRequest(b) &&
       (!b.confirmed_slot || b.confirmed_slot.starts_at >= nowIso),
   );
   const past = bookings.filter(
-    (b) => !pending.includes(b) && !upcoming.includes(b),
+    (b) =>
+      !hasRequest(b) &&
+      !pending.includes(b) &&
+      !upcoming.includes(b),
   );
 
   const render = (b: BookingWithSlots) => (
@@ -46,6 +56,14 @@ export default async function AdminDashboardPage() {
         {dict.admin.dashboardTitle}
       </h1>
 
+      {requests.length > 0 && (
+        <Section
+          title={`${dict.admin.requestSectionTitle} (${requests.length})`}
+          empty=""
+          items={requests}
+          render={render}
+        />
+      )}
       <Section
         title={`${dict.admin.pending} (${pending.length})`}
         empty={dict.admin.noPending}

@@ -124,6 +124,9 @@ function hydrate(
     alternative_slots: (b.alternative_slot_ids ?? [])
       .map((id) => slots.get(id))
       .filter((s): s is AvailabilitySlot => Boolean(s)),
+    requested_slot: b.requested_slot_id
+      ? slots.get(b.requested_slot_id) ?? null
+      : null,
   };
 }
 
@@ -144,6 +147,7 @@ export async function getBookingByCode(
     const ids = [
       b.preferred_slot_id,
       b.confirmed_slot_id,
+      b.requested_slot_id,
       ...(b.alternative_slot_ids ?? []),
     ].filter((x): x is string => Boolean(x));
     const slots = await slotsByIds(sb, ids);
@@ -182,6 +186,7 @@ export async function getAllBookings(): Promise<BookingWithSlots[]> {
   const ids = bookings.flatMap((b) => [
     b.preferred_slot_id,
     b.confirmed_slot_id,
+    b.requested_slot_id,
     ...(b.alternative_slot_ids ?? []),
   ]);
   const slots = await slotsByIds(

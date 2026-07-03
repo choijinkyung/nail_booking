@@ -10,6 +10,7 @@ import {
   completeBooking,
   confirmBooking,
   declineBooking,
+  dismissRequest,
 } from "@/app/admin/actions";
 
 interface Props {
@@ -88,6 +89,71 @@ export function AdminBookingCard({
           </p>
         </div>
       </div>
+
+      {/* 손님 변경/취소 요청 배너 */}
+      {booking.request_kind && (
+        <div className="mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+          <p className="text-sm font-bold text-amber-900">
+            {booking.request_kind === "change"
+              ? a.requestBadgeChange
+              : a.requestBadgeCancel}
+          </p>
+          {booking.change_request && (
+            <p className="mt-1 whitespace-pre-line text-sm text-amber-900">
+              “{booking.change_request}”
+            </p>
+          )}
+          {booking.request_kind === "change" && booking.requested_slot && (
+            <p className="mt-1 text-sm text-amber-900">
+              {a.customerRequestedTime}:{" "}
+              <b>{formatDateTime(booking.requested_slot.starts_at, locale)}</b>
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {booking.request_kind === "change" &&
+              booking.requested_slot &&
+              booking.requested_slot.status === "open" && (
+                <button
+                  disabled={pending}
+                  onClick={() =>
+                    run(() =>
+                      confirmBooking({
+                        bookingId: booking.id,
+                        slotId: booking.requested_slot!.id,
+                        message,
+                      }),
+                    )
+                  }
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  {a.approveChange}
+                </button>
+              )}
+            {booking.request_kind === "cancel" && (
+              <button
+                disabled={pending}
+                onClick={() =>
+                  run(() =>
+                    cancelBooking({ bookingId: booking.id, message }),
+                  )
+                }
+                className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                {a.approveCancel}
+              </button>
+            )}
+            <button
+              disabled={pending}
+              onClick={() =>
+                run(() => dismissRequest({ bookingId: booking.id, message }))
+              }
+              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-800 disabled:opacity-40"
+            >
+              {a.dismissRequest}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 시술 */}
       <div className="mt-3 rounded-xl bg-brand-50/60 p-3 text-sm">

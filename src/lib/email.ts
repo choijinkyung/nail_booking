@@ -61,6 +61,30 @@ export async function notifyAdminNewBooking(input: {
   });
 }
 
+/** 손님의 변경/취소 요청 → 관리자에게 알림 */
+export async function notifyAdminBookingUpdate(input: {
+  code: string;
+  customerName: string;
+  contact: string;
+  kind: "change" | "cancel";
+  message: string;
+  siteUrl: string;
+}): Promise<void> {
+  if (!ADMIN_EMAIL) return;
+  const isCancel = input.kind === "cancel";
+  await safeSend({
+    to: ADMIN_EMAIL,
+    subject: `${isCancel ? "❌ 예약 취소" : "🔄 예약 변경 요청"} · ${input.customerName} (${input.code})`,
+    html: wrap(`
+      <h2 style="margin:0 0 12px">${isCancel ? "손님이 예약을 취소했어요" : "손님이 예약 변경을 요청했어요"}</h2>
+      <p style="margin:4px 0"><b>고객</b> ${input.customerName} (${input.contact})</p>
+      <p style="margin:4px 0"><b>코드</b> ${input.code}</p>
+      ${input.message ? `<p style="margin:12px 0;padding:12px;background:#fdf2f8;border-radius:8px">${input.message}</p>` : ""}
+      <p style="margin:16px 0 0"><a href="${input.siteUrl}/admin" style="background:#db2777;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">관리자에서 확인하기</a></p>
+    `),
+  });
+}
+
 /** 예약 확정/불가 결과 → 고객에게 알림 (이메일 입력한 경우만) */
 export async function notifyCustomerResult(input: {
   to: string;

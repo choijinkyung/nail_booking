@@ -69,6 +69,15 @@ export async function confirmBooking(input: {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
 
+  // 0) 이전에 확정돼 있던 슬롯(변경 승인 시)을 나중에 다시 열기 위해 기억
+  const { data: prev } = await sb
+    .from("bookings")
+    .select("confirmed_slot_id")
+    .eq("id", input.bookingId)
+    .single();
+  const prevSlotId = (prev as { confirmed_slot_id: string | null } | null)
+    ?.confirmed_slot_id;
+
   // 1) 슬롯 잠금 (원자적 조건부 업데이트)
   const { data: locked, error: lockErr } = await sb
     .from("availability_slots")
@@ -90,6 +99,11 @@ export async function confirmBooking(input: {
       status: "confirmed",
       confirmed_slot_id: input.slotId,
       admin_message: input.message ?? "",
+      // 손님 변경요청을 승인/처리했으므로 요청 플래그 정리
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.bookingId)
@@ -106,9 +120,19 @@ export async function confirmBooking(input: {
     return { ok: false, error: "DB" };
   }
 
+  // 변경 승인으로 시간이 바뀐 경우, 이전 확정 슬롯을 다시 연다
+  if (prevSlotId && prevSlotId !== input.slotId) {
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .eq("id", prevSlotId)
+      .eq("status", "booked");
+  }
+
   await emailResult(updated as Booking, true, slot);
   revalidatePath("/admin");
   revalidatePath("/admin/availability");
+  revalidatePath("/admin/calendar");
   return { ok: true };
 }
 
@@ -123,6 +147,10 @@ export async function declineBooking(input: {
     .update({
       status: "declined",
       admin_message: input.message ?? "",
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.bookingId)
@@ -134,8 +162,38 @@ export async function declineBooking(input: {
   return { ok: true };
 }
 
+/** 손님의 요청을 반려(변경 없이 요청만 해제). 원하면 안내 메시지를 손님에게 발송. */
+export async function dismissRequest(input: {
+  bookingId: string;
+  message?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from("bookings")
+    .update({
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
+      admin_message: input.message ?? "",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.bookingId)
+    .select("*")
+    .single();
+  if (error || !data) return { ok: false, error: "DB" };
+  const b = data as Booking;
+  if (input.message) {
+    await emailResult(b, b.status === "confirmed", null);
+  }
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function cancelBooking(input: {
   bookingId: string;
+  message?: string;
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
@@ -154,17 +212,27 @@ export async function cancelBooking(input: {
       .eq("id", slotId)
       .eq("status", "booked");
   }
-  const { error } = await sb
+  const { data: updated, error } = await sb
     .from("bookings")
     .update({
       status: "cancelled",
       confirmed_slot_id: null,
+      request_kind: "",
+      change_request: "",
+      change_requested_at: null,
+      requested_slot_id: null,
+      admin_message: input.message ?? "",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", input.bookingId);
-  if (error) return { ok: false, error: "DB" };
+    .eq("id", input.bookingId)
+    .select("*")
+    .single();
+  if (error || !updated) return { ok: false, error: "DB" };
+  // 취소 결과를 손님에게 안내 (이메일 입력 시)
+  await emailResult(updated as Booking, false, null);
   revalidatePath("/admin");
   revalidatePath("/admin/availability");
+  revalidatePath("/admin/calendar");
   return { ok: true };
 }
 

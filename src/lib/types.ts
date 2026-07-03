@@ -59,6 +59,10 @@ export interface Booking {
   status: BookingStatus;
   confirmed_slot_id: string | null;
   admin_message: string;
+  change_request: string;
+  change_requested_at: string | null;
+  request_kind: "" | "change" | "cancel";
+  requested_slot_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +72,7 @@ export interface BookingWithSlots extends Booking {
   preferred_slot: AvailabilitySlot | null;
   confirmed_slot: AvailabilitySlot | null;
   alternative_slots: AvailabilitySlot[];
+  requested_slot: AvailabilitySlot | null;
 }
 
 export interface GalleryPhoto {

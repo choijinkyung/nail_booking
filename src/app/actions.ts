@@ -1,13 +1,14 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
-import { notifyAdminNewBooking } from "@/lib/email";
+import { notifyAdminBookingUpdate, notifyAdminNewBooking } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
-import type { BookingServiceLine, Service } from "@/lib/types";
+import type { Booking, BookingServiceLine, Service } from "@/lib/types";
 
 /** 언어 전환 — 쿠키 설정 후 페이지 새로고침용 */
 export async function setLocale(locale: string) {
@@ -166,4 +167,74 @@ export async function createBooking(
   }
 
   return { ok: true, code };
+}
+
+// ── 손님의 변경/취소 "요청" (실제 변경은 관리자 승인 시에만) ──
+export type CustomerRequestResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function submitCustomerRequest(input: {
+  code: string;
+  kind: "change" | "cancel";
+  message: string;
+  requestedSlotId?: string;
+}): Promise<CustomerRequestResult> {
+  if (!isSupabaseAdminConfigured()) return { ok: false, error: "SETUP" };
+  const code = (input.code ?? "").trim().toUpperCase();
+  if (!code) return { ok: false, error: "NOT_FOUND" };
+
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("bookings")
+    .select("*")
+    .eq("code", code)
+    .single();
+  const b = data as Booking | null;
+  if (!b) return { ok: false, error: "NOT_FOUND" };
+  if (["cancelled", "declined", "completed"].includes(b.status)) {
+    return { ok: false, error: "CLOSED" };
+  }
+
+  // 변경요청의 희망 시간은 '관리자가 연(open) 미래 슬롯'만 허용
+  let requestedSlotId: string | null = null;
+  if (input.kind === "change" && input.requestedSlotId) {
+    const nowIso = new Date().toISOString();
+    const { data: slot } = await sb
+      .from("availability_slots")
+      .select("id, status, starts_at")
+      .eq("id", input.requestedSlotId)
+      .single();
+    const s = slot as { id: string; status: string; starts_at: string } | null;
+    if (s && s.status === "open" && s.starts_at >= nowIso) requestedSlotId = s.id;
+  }
+
+  const { error } = await sb
+    .from("bookings")
+    .update({
+      request_kind: input.kind,
+      change_request: (input.message ?? "").trim(),
+      change_requested_at: new Date().toISOString(),
+      requested_slot_id: requestedSlotId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", b.id);
+  if (error) return { ok: false, error: "DB" };
+
+  try {
+    const siteUrl = await getSiteUrl();
+    await notifyAdminBookingUpdate({
+      code: b.code,
+      customerName: b.customer_name,
+      contact: b.customer_contact,
+      kind: input.kind,
+      message: (input.message ?? "").trim(),
+      siteUrl,
+    });
+  } catch (err) {
+    console.error("[submitCustomerRequest] 알림 실패(무시):", err);
+  }
+
+  revalidatePath("/admin");
+  return { ok: true };
 }
