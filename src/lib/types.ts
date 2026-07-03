@@ -45,12 +45,27 @@ export interface BookingServiceLine {
   subtotal: number;
 }
 
+export interface Customer {
+  id: string;
+  contact: string;
+  name: string;
+  email: string;
+  referral_source: string;
+  memo: string;
+  created_at: string;
+}
+
 export interface Booking {
   id: string;
   code: string;
+  customer_id: string | null;
   customer_name: string;
   customer_contact: string;
   customer_email: string;
+  referral_source: string;
+  final_price: number | null;
+  tip: number;
+  completed_at: string | null;
   services: BookingServiceLine[];
   estimated_total: number;
   note: string;
@@ -90,6 +105,14 @@ export interface Settings {
   id: number;
   shop_name_ko: string;
   shop_name_en: string;
+  hero_tagline_ko: string;
+  hero_tagline_en: string;
+  hero_sub_ko: string;
+  hero_sub_en: string;
+  schedule_note_ko: string;
+  schedule_note_en: string;
+  logo_url: string;
+  logo_storage_path: string;
   location_ko: string;
   location_en: string;
   notice_ko: string;

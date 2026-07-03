@@ -14,6 +14,11 @@ export default async function LandingPage() {
   ]);
   const isEn = locale === "en";
   const shopName = isEn ? settings.shop_name_en : settings.shop_name_ko;
+  const heroTagline = isEn ? settings.hero_tagline_en : settings.hero_tagline_ko;
+  const heroSub = isEn ? settings.hero_sub_en : settings.hero_sub_ko;
+  const scheduleNote = isEn
+    ? settings.schedule_note_en
+    : settings.schedule_note_ko;
   const notice = isEn ? settings.notice_en : settings.notice_ko;
   const location = isEn ? settings.location_en : settings.location_ko;
 
@@ -30,28 +35,49 @@ export default async function LandingPage() {
       <main className="mx-auto max-w-md px-4 pb-28">
         {/* Hero */}
         <section className="pt-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-100 text-3xl">
-            💅
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-brand-100 text-3xl">
+            {settings.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={settings.logo_url}
+                alt={shopName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              "💅"
+            )}
           </div>
           <h1 className="text-2xl font-extrabold text-brand-800">{shopName}</h1>
           <p className="mt-2 text-base font-medium text-brand-600">
-            {dict.landing.heroTagline}
+            {heroTagline}
           </p>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted">
-            {dict.landing.heroSub}
+            {heroSub}
           </p>
         </section>
 
-        {/* ⚠️ 안내사항 — 상단에 강조 */}
+        {/* ⏰ 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
         <section className="mt-6">
-          <NoticeBanner title={dict.landing.noticeTitle}>{notice}</NoticeBanner>
+          <div className="rounded-2xl bg-brand-600 p-4 text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-xl">
+                ⏰
+              </span>
+              <div>
+                <p className="text-sm font-bold">
+                  {isEn ? "Please note about timing" : "예약 시간 안내 (꼭 읽어주세요)"}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-white/95 whitespace-pre-line">
+                  {scheduleNote}
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* 유동적 시간 안내 */}
+        {/* ⚠️ 주의사항 강조 */}
         <section className="mt-4">
-          <div className="rounded-2xl border border-brand-200 bg-brand-50/70 p-4 text-sm leading-relaxed text-brand-800">
-            ⏰ {dict.landing.flexNote}
-          </div>
+          <NoticeBanner title={dict.landing.noticeTitle}>{notice}</NoticeBanner>
         </section>
 
         {/* How it works */}

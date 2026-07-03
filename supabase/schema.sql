@@ -34,15 +34,31 @@ create table if not exists public.availability_slots (
 create index if not exists availability_slots_starts_at_idx
   on public.availability_slots (starts_at);
 
+-- ── 고객(단골) ─────────────────────────────────────────────
+create table if not exists public.customers (
+  id              uuid primary key default gen_random_uuid(),
+  contact         text not null unique,        -- 매칭 키 (전화/카톡)
+  name            text default '',
+  email           text default '',
+  referral_source text default '',             -- 유입경로
+  memo            text default '',             -- 사장님 메모
+  created_at      timestamptz not null default now()
+);
+
 -- ── 예약 요청 ──────────────────────────────────────────────
 create table if not exists public.bookings (
   id                   uuid primary key default gen_random_uuid(),
   code                 text not null unique,        -- 고객 조회용 짧은 코드
+  customer_id          uuid references public.customers(id) on delete set null,
   customer_name        text not null,
   customer_contact     text not null,               -- 전화 / 카톡 등
   customer_email       text default '',
+  referral_source      text default '',             -- 유입경로 (instagram 등)
   lookup_password_hash text default '',             -- 예약 확인용 비밀번호 해시
   lookup_password_salt text default '',
+  final_price          numeric(10,2),               -- 시술 완료 시 확정 시술가
+  tip                  numeric(10,2) not null default 0,
+  completed_at         timestamptz,                 -- 시술 완료 시각
   services             jsonb not null default '[]', -- 예약 시점 스냅샷
   estimated_total      numeric(10,2) not null default 0,
   note                 text default '',             -- 고객 메모 (연장 손가락 수 등)
@@ -66,7 +82,13 @@ alter table public.bookings add column if not exists request_kind text default '
 alter table public.bookings add column if not exists requested_slot_id uuid references public.availability_slots(id) on delete set null;
 alter table public.bookings add column if not exists lookup_password_hash text default '';
 alter table public.bookings add column if not exists lookup_password_salt text default '';
+alter table public.bookings add column if not exists customer_id uuid references public.customers(id) on delete set null;
+alter table public.bookings add column if not exists referral_source text default '';
+alter table public.bookings add column if not exists final_price numeric(10,2);
+alter table public.bookings add column if not exists tip numeric(10,2) not null default 0;
+alter table public.bookings add column if not exists completed_at timestamptz;
 create index if not exists bookings_name_idx on public.bookings (lower(customer_name));
+create index if not exists bookings_customer_idx on public.bookings (customer_id);
 create index if not exists bookings_status_idx on public.bookings (status);
 create index if not exists bookings_created_at_idx on public.bookings (created_at desc);
 
@@ -81,6 +103,14 @@ create table if not exists public.settings (
   id              int primary key default 1 check (id = 1),
   shop_name_ko    text default 'Zenna Nail',
   shop_name_en    text default 'Zenna Nail',
+  hero_tagline_ko text default '집에서 편안하게 받는 네일',
+  hero_tagline_en text default 'Home nail service, at your convenience',
+  hero_sub_ko     text default '원하는 시간을 골라 예약을 요청하면, 확인 후 확정해 드려요.',
+  hero_sub_en     text default 'Pick a time and send a request — I''ll confirm it after checking.',
+  schedule_note_ko text default '네일샵 근무 일정에 따라 예약 시간이 조정될 수 있어요. 그래서 대체 시간을 함께 받아요.',
+  schedule_note_en text default 'Times may shift depending on my nail salon schedule, so I collect backup times too.',
+  logo_url        text default '',
+  logo_storage_path text default '',
   location_ko     text default 'Surrey Central 인근 (정확한 주소는 예약 확정 후 안내드려요)',
   location_en     text default 'Near Surrey Central (exact address shared after confirmation)',
   notice_ko       text default '반려동물(강아지·고양이)이 있어 알러지가 있으신 분은 방문이 어렵습니다.',
@@ -93,6 +123,16 @@ create table if not exists public.settings (
   currency        text default 'CAD',
   updated_at      timestamptz not null default now()
 );
+
+-- 기존 설치본에도 안전하게 settings 컬럼 추가
+alter table public.settings add column if not exists hero_tagline_ko text default '집에서 편안하게 받는 네일';
+alter table public.settings add column if not exists hero_tagline_en text default 'Home nail service, at your convenience';
+alter table public.settings add column if not exists hero_sub_ko text default '원하는 시간을 골라 예약을 요청하면, 확인 후 확정해 드려요.';
+alter table public.settings add column if not exists hero_sub_en text default 'Pick a time and send a request — I''ll confirm it after checking.';
+alter table public.settings add column if not exists schedule_note_ko text default '네일샵 근무 일정에 따라 예약 시간이 조정될 수 있어요. 그래서 대체 시간을 함께 받아요.';
+alter table public.settings add column if not exists schedule_note_en text default 'Times may shift depending on my nail salon schedule, so I collect backup times too.';
+alter table public.settings add column if not exists logo_url text default '';
+alter table public.settings add column if not exists logo_storage_path text default '';
 
 -- 기본 설정 행 보장
 insert into public.settings (id) values (1)
@@ -130,6 +170,7 @@ on conflict (id) do nothing;
 alter table public.services           enable row level security;
 alter table public.availability_slots enable row level security;
 alter table public.bookings           enable row level security;
+alter table public.customers          enable row level security;
 alter table public.settings           enable row level security;
 alter table public.gallery_photos     enable row level security;
 -- 정책을 만들지 않으므로 anon/authenticated 직접 접근은 모두 거부됩니다.

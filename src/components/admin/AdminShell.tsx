@@ -5,6 +5,7 @@ import type { Dict } from "@/lib/i18n";
 type Tab =
   | "dashboard"
   | "calendar"
+  | "customers"
   | "availability"
   | "services"
   | "gallery"
@@ -14,6 +15,12 @@ const TABS: { key: Tab; href: string; icon: string; label: keyof Dict["admin"] }
   [
     { key: "dashboard", href: "/admin", icon: "📋", label: "nav_dashboard" },
     { key: "calendar", href: "/admin/calendar", icon: "📅", label: "nav_calendar" },
+    {
+      key: "customers",
+      href: "/admin/customers",
+      icon: "👥",
+      label: "nav_customers",
+    },
     {
       key: "availability",
       href: "/admin/availability",

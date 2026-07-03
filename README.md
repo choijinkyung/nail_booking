@@ -83,12 +83,15 @@ npm run dev       # http://localhost:3000
 - **`/gallery`** 시술 사진 갤러리 (카테고리 탭으로 필터)
 
 ### 관리자 (사장님)
-- **`/admin`** 예약 관리 — 대기 요청 확정 / 다른 시간 제안 / 불가 안내. 상단에 **손님 변경·취소 요청**이 모여 보이고, 버튼으로 승인/반려. (승인해야만 실제 반영, 손님에게 이메일 통보)
-- **`/admin/calendar`** 월별 캘린더로 예약 현황(고객·시간·시술) 확인
+- **`/admin`** 예약 관리 — 확정 / 시간 제안 / 불가 안내. 손님 변경·취소 요청 승인/반려. **시술 완료** 시 시술가+팁 입력 → 손님에게 금액·e-transfer 안내 발송
+- **`/admin/calendar`** 월별 캘린더(고객·시간·시술·금액) + **이번 달/총 매출**
+- **`/admin/customers`** 고객 목록 — 방문 이력·마지막 방문·경과일·누적 결제·유입경로·메모
 - **`/admin/availability`** 예약 가능 시간대 추가 / 막기 / 삭제
-- **`/admin/services`** 가격표 수정 (원컬러·제거·연장 단가 등)
-- **`/admin/gallery`** 시술 사진 업로드 / 카테고리 지정 / 삭제
-- **`/admin/settings`** 상호·위치·주의사항·결제 / e-transfer 정보 수정
+- **`/admin/services`** 가격표 수정
+- **`/admin/gallery`** 시술 사진 업로드 / 카테고리 / 삭제
+- **`/admin/settings`** 상호(제목)·**소개(bio)·로고 이미지**·예약시간 유동 안내·위치·주의사항·e-transfer 수정
+
+> **앱을 업데이트(git pull)한 뒤엔** Supabase SQL Editor에서 [`supabase/schema.sql`](supabase/schema.sql)을 다시 한 번 Run 하세요. (컬럼/테이블 추가는 `if not exists`라 여러 번 실행해도 안전해요 — 기존 데이터는 유지됩니다.)
 
 > 갤러리 사진은 Supabase Storage 의 공개 버킷 `gallery` 에 저장됩니다. `schema.sql` 실행 시 버킷도 함께 생성돼요.
 

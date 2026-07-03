@@ -30,6 +30,7 @@ export interface CreateBookingInput {
   customer_contact: string;
   customer_email?: string;
   customer_password: string; // 예약 확인용 (이름+비밀번호 조회)
+  referral_source?: string;
   note?: string;
 }
 
@@ -119,7 +120,41 @@ export async function createBooking(
     (id) => id !== input.preferred_slot_id && validSlotIds.has(id),
   );
 
-  // 3) 유니크 코드로 insert (충돌 시 재시도)
+  // 3) 고객(단골) upsert — 연락처를 키로 매칭
+  const referral = (input.referral_source ?? "").trim();
+  let customerId: string | null = null;
+  try {
+    const { data: existing } = await sb
+      .from("customers")
+      .select("id, referral_source")
+      .eq("contact", contact)
+      .maybeSingle();
+    if (existing) {
+      customerId = (existing as { id: string }).id;
+      await sb
+        .from("customers")
+        .update({
+          name,
+          email,
+          // 유입경로는 기존 값 우선(첫 유입 유지), 없으면 새 값
+          referral_source:
+            (existing as { referral_source: string }).referral_source ||
+            referral,
+        })
+        .eq("id", customerId);
+    } else {
+      const { data: created } = await sb
+        .from("customers")
+        .insert({ contact, name, email, referral_source: referral })
+        .select("id")
+        .single();
+      customerId = (created as { id: string } | null)?.id ?? null;
+    }
+  } catch (err) {
+    console.error("[createBooking] customer upsert 실패(무시):", err);
+  }
+
+  // 4) 유니크 코드로 insert (충돌 시 재시도)
   const salt = makeSalt();
   const passwordHash = hashPassword(password, salt);
   let code = "";
@@ -128,9 +163,11 @@ export async function createBooking(
     code = generateCode();
     const { error } = await sb.from("bookings").insert({
       code,
+      customer_id: customerId,
       customer_name: name,
       customer_contact: contact,
       customer_email: email,
+      referral_source: referral,
       lookup_password_hash: passwordHash,
       lookup_password_salt: salt,
       services: lines,

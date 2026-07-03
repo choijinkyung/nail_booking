@@ -41,6 +41,11 @@ export function AdminBookingCard({
   const [message, setMessage] = useState(booking.admin_message ?? "");
   const [otherSlot, setOtherSlot] = useState("");
   const [showPropose, setShowPropose] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+  const [finalPrice, setFinalPrice] = useState(
+    String(booking.estimated_total ?? 0),
+  );
+  const [tip, setTip] = useState("0");
   const [err, setErr] = useState("");
   const a = dict.admin;
   const isEn = locale === "en";
@@ -292,16 +297,14 @@ export function AdminBookingCard({
       )}
 
       {/* confirmed 컨트롤 */}
-      {booking.status === "confirmed" && (
+      {booking.status === "confirmed" && !showComplete && (
         <div className="mt-3 flex gap-2">
           <button
             disabled={pending}
-            onClick={() =>
-              run(() => completeBooking({ bookingId: booking.id }))
-            }
+            onClick={() => setShowComplete(true)}
             className="flex-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            {a.markCompleted}
+            ✅ {a.markCompleted}
           </button>
           <button
             disabled={pending}
@@ -310,6 +313,94 @@ export function AdminBookingCard({
           >
             {a.cancelBooking}
           </button>
+        </div>
+      )}
+
+      {/* 완료 처리: 금액 + 팁 입력 */}
+      {booking.status === "confirmed" && showComplete && (
+        <div className="mt-3 space-y-2 rounded-xl border border-brand-200 bg-brand-50/50 p-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="mb-1 block text-xs text-muted">
+                {a.finalPriceLabel} ({currency})
+              </span>
+              <input
+                value={finalPrice}
+                onChange={(e) => setFinalPrice(e.target.value)}
+                inputMode="decimal"
+                className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-muted">
+                {a.tipLabel} ({currency})
+              </span>
+              <input
+                value={tip}
+                onChange={(e) => setTip(e.target.value)}
+                inputMode="decimal"
+                className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+          <div className="flex justify-between px-1 text-sm font-semibold text-brand-800">
+            <span>{dict.common.total}</span>
+            <span>
+              {formatMoney(
+                (Number(finalPrice) || 0) + (Number(tip) || 0),
+                currency,
+              )}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowComplete(false)}
+              className="rounded-lg border border-brand-200 px-3 py-2 text-xs text-brand-700"
+            >
+              {dict.common.cancel}
+            </button>
+            <button
+              disabled={pending}
+              onClick={() =>
+                run(() =>
+                  completeBooking({
+                    bookingId: booking.id,
+                    finalPrice: Number(finalPrice) || 0,
+                    tip: Number(tip) || 0,
+                  }),
+                )
+              }
+              className="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              {a.completeSend}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 완료된 예약: 금액 표시 */}
+      {booking.status === "completed" && (
+        <div className="mt-3 rounded-xl bg-brand-50/60 p-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted">{a.finalPriceLabel}</span>
+            <span>{formatMoney(booking.final_price ?? booking.estimated_total, currency)}</span>
+          </div>
+          {booking.tip > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted">{a.tipLabel}</span>
+              <span>{formatMoney(booking.tip, currency)}</span>
+            </div>
+          )}
+          <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-800">
+            <span>{dict.common.total}</span>
+            <span>
+              {formatMoney(
+                (booking.final_price ?? booking.estimated_total) +
+                  (booking.tip ?? 0),
+                currency,
+              )}
+            </span>
+          </div>
         </div>
       )}
 

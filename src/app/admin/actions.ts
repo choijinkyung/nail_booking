@@ -9,9 +9,9 @@ import {
   setAdminSession,
   verifyCredentials,
 } from "@/lib/adminAuth";
-import { notifyCustomerResult } from "@/lib/email";
+import { notifyCustomerCompleted, notifyCustomerResult } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
-import { formatSlot } from "@/lib/format";
+import { formatMoney, formatSlot } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import type { AvailabilitySlot, Booking } from "@/lib/types";
 
@@ -243,15 +243,59 @@ export async function cancelBooking(input: {
 
 export async function completeBooking(input: {
   bookingId: string;
+  finalPrice: number;
+  tip: number;
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
-  const { error } = await sb
+  const finalPrice = Math.max(0, Number(input.finalPrice) || 0);
+  const tip = Math.max(0, Number(input.tip) || 0);
+
+  const { data, error } = await sb
     .from("bookings")
-    .update({ status: "completed", updated_at: new Date().toISOString() })
-    .eq("id", input.bookingId);
-  if (error) return { ok: false, error: "DB" };
+    .update({
+      status: "completed",
+      final_price: finalPrice,
+      tip,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.bookingId)
+    .select("*")
+    .single();
+  if (error || !data) return { ok: false, error: "DB" };
+
+  // 고객에게 금액 + e-transfer 안내 이메일 (이메일 입력 시)
+  const b = data as Booking;
+  if (b.customer_email) {
+    try {
+      const [siteUrl, settingsRes] = await Promise.all([
+        getSiteUrl(),
+        sb.from("settings").select("*").eq("id", 1).single(),
+      ]);
+      const s = (settingsRes.data ?? {}) as Record<string, string>;
+      const cur = s.currency || "CAD";
+      const locale = await getLocale();
+      const isEn = locale === "en";
+      await notifyCustomerCompleted({
+        to: b.customer_email,
+        code: b.code,
+        serviceText: formatMoney(finalPrice, cur),
+        tipText: formatMoney(tip, cur),
+        totalText: formatMoney(finalPrice + tip, cur),
+        paymentText: (isEn ? s.payment_en : s.payment_ko) || "",
+        etransferEmail: s.etransfer_email || "",
+        etransferNote: (isEn ? s.etransfer_note_en : s.etransfer_note_ko) || "",
+        siteUrl,
+      });
+    } catch (err) {
+      console.error("[completeBooking] 이메일 무시:", err);
+    }
+  }
+
   revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/customers");
   return { ok: true };
 }
 
@@ -362,6 +406,22 @@ export async function deleteService(input: {
 
 // ── 설정 ─────────────────────────────────────────────────────
 
+// ── 고객 메모 ────────────────────────────────────────────────
+export async function saveCustomerMemo(input: {
+  customerId: string;
+  memo: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("customers")
+    .update({ memo: input.memo })
+    .eq("id", input.customerId);
+  if (error) return { ok: false, error: "DB" };
+  revalidatePath("/admin/customers");
+  return { ok: true };
+}
+
 // ── 갤러리 ───────────────────────────────────────────────────
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -413,6 +473,74 @@ export async function uploadGalleryPhoto(
   return { ok: true };
 }
 
+export async function uploadLogo(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  await assertAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0)
+    return { ok: false, error: "NO_FILE" };
+  if (!file.type.startsWith("image/")) return { ok: false, error: "NOT_IMAGE" };
+  if (file.size > MAX_IMAGE_BYTES) return { ok: false, error: "TOO_BIG" };
+
+  const sb = createSupabaseAdminClient();
+  const ext = (file.name.split(".").pop() ?? "png")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 5);
+  const path = `logo/${crypto.randomUUID()}.${ext || "png"}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  // 이전 로고 삭제
+  const { data: prev } = await sb
+    .from("settings")
+    .select("logo_storage_path")
+    .eq("id", 1)
+    .single();
+  const prevPath = (prev as { logo_storage_path: string } | null)
+    ?.logo_storage_path;
+
+  const { error: upErr } = await sb.storage
+    .from("gallery")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (upErr) return { ok: false, error: "STORAGE" };
+  const { data: pub } = sb.storage.from("gallery").getPublicUrl(path);
+
+  const { error } = await sb
+    .from("settings")
+    .update({ logo_url: pub.publicUrl, logo_storage_path: path })
+    .eq("id", 1);
+  if (error) {
+    await sb.storage.from("gallery").remove([path]);
+    return { ok: false, error: "DB" };
+  }
+  if (prevPath) await sb.storage.from("gallery").remove([prevPath]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function removeLogo(): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const { data: prev } = await sb
+    .from("settings")
+    .select("logo_storage_path")
+    .eq("id", 1)
+    .single();
+  const prevPath = (prev as { logo_storage_path: string } | null)
+    ?.logo_storage_path;
+  if (prevPath) await sb.storage.from("gallery").remove([prevPath]);
+  await sb
+    .from("settings")
+    .update({ logo_url: "", logo_storage_path: "" })
+    .eq("id", 1);
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export async function deleteGalleryPhoto(input: {
   id: string;
   storagePath: string;
@@ -444,6 +572,12 @@ export async function saveSettings(
     .update({
       shop_name_ko: get("shop_name_ko"),
       shop_name_en: get("shop_name_en"),
+      hero_tagline_ko: get("hero_tagline_ko"),
+      hero_tagline_en: get("hero_tagline_en"),
+      hero_sub_ko: get("hero_sub_ko"),
+      hero_sub_en: get("hero_sub_en"),
+      schedule_note_ko: get("schedule_note_ko"),
+      schedule_note_en: get("schedule_note_en"),
       location_ko: get("location_ko"),
       location_en: get("location_en"),
       notice_ko: get("notice_ko"),

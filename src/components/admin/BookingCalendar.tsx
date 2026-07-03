@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { BookingStatus, BookingWithSlots } from "@/lib/types";
-import { formatTimeOnly, slotDayKey } from "@/lib/format";
+import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 
 interface CalEvent {
   dayKey: string;
@@ -11,6 +11,7 @@ interface CalEvent {
   name: string;
   services: string;
   status: BookingStatus;
+  amount: number; // 완료 예약의 결제액(시술가+팁), 그 외 0
 }
 
 const DOT: Record<string, string> = {
@@ -41,11 +42,13 @@ export function BookingCalendar({
   today,
   dict,
   locale,
+  currency,
 }: {
   bookings: BookingWithSlots[];
   today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;
+  currency: string;
 }) {
   const isEn = locale === "en";
   const [ty, tm] = today.split("-").map(Number);
@@ -64,6 +67,10 @@ export function BookingCalendar({
         iso = b.preferred_slot?.starts_at ?? null;
       }
       if (!iso) continue;
+      const amount =
+        b.status === "completed"
+          ? (b.final_price ?? b.estimated_total) + (b.tip ?? 0)
+          : 0;
       out.push({
         dayKey: slotDayKey(iso),
         iso,
@@ -72,10 +79,18 @@ export function BookingCalendar({
           .map((l) => (isEn ? l.name_en : l.name_ko))
           .join(", "),
         status: b.status,
+        amount,
       });
     }
     return out;
   }, [bookings, isEn]);
+
+  // 매출: 전체 + 현재 보는 달
+  const monthPrefix = `${year}-${pad(month + 1)}`;
+  const revenueTotal = events.reduce((s, e) => s + e.amount, 0);
+  const revenueMonth = events
+    .filter((e) => e.dayKey.startsWith(monthPrefix))
+    .reduce((s, e) => s + e.amount, 0);
 
   const eventsByDay = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
@@ -122,6 +137,22 @@ export function BookingCalendar({
 
   return (
     <div>
+      {/* 매출 요약 */}
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-brand-100 bg-white p-3 text-center">
+          <p className="text-xs text-muted">{dict.admin.revenueMonth}</p>
+          <p className="mt-0.5 text-lg font-bold text-brand-700">
+            {formatMoney(revenueMonth, currency)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-brand-100 bg-brand-600 p-3 text-center text-white">
+          <p className="text-xs opacity-90">{dict.admin.revenueTotal}</p>
+          <p className="mt-0.5 text-lg font-bold">
+            {formatMoney(revenueTotal, currency)}
+          </p>
+        </div>
+      </div>
+
       {/* 헤더 */}
       <div className="mb-3 flex items-center justify-between">
         <button
@@ -222,8 +253,15 @@ export function BookingCalendar({
                     {e.services}
                   </span>
                 </span>
-                <span className="ml-auto shrink-0 text-xs text-muted">
-                  {statusText(e.status, dict)}
+                <span className="ml-auto shrink-0 text-right text-xs">
+                  <span className="block text-muted">
+                    {statusText(e.status, dict)}
+                  </span>
+                  {e.status === "completed" && e.amount > 0 && (
+                    <span className="block font-semibold text-brand-700">
+                      {formatMoney(e.amount, currency)}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

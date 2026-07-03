@@ -6,6 +6,7 @@ import type {
   AvailabilitySlot,
   Booking,
   BookingWithSlots,
+  Customer,
   GalleryPhoto,
   Service,
   Settings,
@@ -16,6 +17,16 @@ export const DEFAULT_SETTINGS: Settings = {
   id: 1,
   shop_name_ko: "Zenna Nail",
   shop_name_en: "Zenna Nail",
+  hero_tagline_ko: "집에서 편안하게 받는 네일",
+  hero_tagline_en: "Home nail service, at your convenience",
+  hero_sub_ko: "원하는 시간을 골라 예약을 요청하면, 확인 후 확정해 드려요.",
+  hero_sub_en: "Pick a time and send a request — I'll confirm it after checking.",
+  schedule_note_ko:
+    "네일샵 근무 일정에 따라 예약 시간이 조정될 수 있어요. 그래서 대체 시간을 함께 받아요.",
+  schedule_note_en:
+    "Times may shift depending on my nail salon schedule, so I collect backup times too.",
+  logo_url: "",
+  logo_storage_path: "",
   location_ko: "Surrey Central 인근 (정확한 주소는 예약 확정 후 안내드려요)",
   location_en: "Near Surrey Central (exact address shared after confirmation)",
   notice_ko: "반려동물(강아지·고양이)이 있어 알러지가 있으신 분은 방문이 어렵습니다.",
@@ -165,6 +176,17 @@ export async function getBookingByCode(
   } catch {
     return null;
   }
+}
+
+/** 관리자용: 전체 고객 (최근 등록순) */
+export async function getCustomers(): Promise<Customer[]> {
+  if (!isSupabaseAdminConfigured()) return [];
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("customers")
+    .select("*")
+    .order("created_at", { ascending: false });
+  return (data as Customer[]) ?? [];
 }
 
 /** 갤러리 사진 (공개) — 카테고리·정렬순 */

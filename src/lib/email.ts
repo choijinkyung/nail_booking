@@ -85,6 +85,39 @@ export async function notifyAdminBookingUpdate(input: {
   });
 }
 
+/** 시술 완료 → 고객에게 금액 + e-transfer 안내 */
+export async function notifyCustomerCompleted(input: {
+  to: string;
+  code: string;
+  serviceText: string;
+  tipText: string;
+  totalText: string;
+  paymentText: string;
+  etransferEmail: string;
+  etransferNote: string;
+  siteUrl: string;
+}): Promise<void> {
+  if (!input.to) return;
+  await safeSend({
+    to: input.to,
+    subject: `시술이 완료되었어요 · 결제 안내 (${input.code})`,
+    html: wrap(`
+      <h2 style="margin:0 0 12px">시술이 완료되었어요 🤎</h2>
+      <table style="width:100%;border-collapse:collapse;margin:8px 0">
+        <tr><td style="padding:6px 0">시술 금액</td><td style="padding:6px 0;text-align:right">${input.serviceText}</td></tr>
+        <tr><td style="padding:6px 0">팁</td><td style="padding:6px 0;text-align:right">${input.tipText}</td></tr>
+        <tr><td style="padding:8px 0;border-top:1px solid #e7d6c9;font-weight:700">합계</td><td style="padding:8px 0;border-top:1px solid #e7d6c9;text-align:right;font-weight:700">${input.totalText}</td></tr>
+      </table>
+      <div style="margin:12px 0;padding:12px;background:#f2e9e1;border-radius:8px">
+        <p style="margin:0 0 4px">${input.paymentText}</p>
+        ${input.etransferEmail ? `<p style="margin:4px 0"><b>e-transfer:</b> ${input.etransferEmail}</p>` : ""}
+        ${input.etransferNote ? `<p style="margin:4px 0;font-size:13px;color:#8c7b6e">${input.etransferNote}</p>` : ""}
+      </div>
+      <p style="margin:16px 0 0"><a href="${input.siteUrl}/status?code=${input.code}" style="background:#8a5a44;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">예약 상세 보기</a></p>
+    `),
+  });
+}
+
 /** 예약 확정/불가 결과 → 고객에게 알림 (이메일 입력한 경우만) */
 export async function notifyCustomerResult(input: {
   to: string;

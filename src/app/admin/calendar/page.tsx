@@ -1,7 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
-import { getAllBookings } from "@/lib/data";
+import { getAllBookings, getSettings } from "@/lib/data";
 import { slotDayKey } from "@/lib/format";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { BookingCalendar } from "@/components/admin/BookingCalendar";
@@ -12,7 +12,10 @@ export default async function AdminCalendarPage() {
   await requireAdminPage();
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const bookings = await getAllBookings();
+  const [bookings, settings] = await Promise.all([
+    getAllBookings(),
+    getSettings(),
+  ]);
   const today = slotDayKey(new Date().toISOString());
 
   return (
@@ -25,6 +28,7 @@ export default async function AdminCalendarPage() {
         today={today}
         dict={dict}
         locale={locale}
+        currency={settings.currency}
       />
     </AdminShell>
   );

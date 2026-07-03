@@ -11,6 +11,7 @@ import {
   slotDayKey,
   unitLabel,
 } from "@/lib/format";
+import { REFERRAL_KEYS } from "@/lib/i18n";
 import { createBooking } from "@/app/actions";
 
 interface Props {
@@ -38,6 +39,7 @@ export function BookingWizard(props: Props) {
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referral, setReferral] = useState("");
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
@@ -130,6 +132,7 @@ export function BookingWizard(props: Props) {
         customer_contact: contact,
         customer_email: email,
         customer_password: password,
+        referral_source: referral,
         note,
       });
       if (res.ok) setResultCode(res.code);
@@ -366,6 +369,20 @@ export function BookingWizard(props: Props) {
                 autoComplete="new-password"
                 className={inputClass}
               />
+            </Field>
+            <Field label={dict.referral.label}>
+              <select
+                value={referral}
+                onChange={(e) => setReferral(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">{dict.referral.none}</option>
+                {REFERRAL_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {(dict.referral as Record<string, string>)[k]}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label={dict.booking.memo}>
               <textarea
