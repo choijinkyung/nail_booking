@@ -25,9 +25,14 @@ export function AvailabilityManager({
   function run(fn: () => Promise<{ ok: boolean }>) {
     setErr("");
     startTransition(async () => {
-      const res = await fn();
-      if (res.ok) router.refresh();
-      else setErr(dict.booking.errGeneric);
+      try {
+        const res = await fn();
+        if (res.ok) router.refresh();
+        else setErr(dict.booking.errGeneric);
+      } catch {
+        // 서버 액션이 예외(예: DB 미설정)로 실패한 경우도 표시
+        setErr(dict.admin.setupNeeded);
+      }
     });
   }
 

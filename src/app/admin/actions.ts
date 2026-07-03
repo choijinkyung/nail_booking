@@ -356,6 +356,7 @@ export async function saveService(input: {
   name_en: string;
   price: number;
   unit: "flat" | "per_finger";
+  duration_min: number;
   active: boolean;
 }): Promise<ActionResult> {
   await assertAdmin();
@@ -367,6 +368,7 @@ export async function saveService(input: {
       name_en: input.name_en.trim(),
       price: Number(input.price) || 0,
       unit: input.unit,
+      duration_min: Math.max(0, Math.round(Number(input.duration_min) || 0)),
       active: input.active,
     })
     .eq("id", input.id);

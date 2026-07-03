@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/admin/actions";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
 import type { Dict } from "@/lib/i18n";
 
 type Tab =
@@ -54,7 +55,20 @@ export function AdminShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg px-4 pt-5">{children}</main>
+      <main className="mx-auto max-w-lg px-4 pt-5">
+        {!isSupabaseAdminConfigured() && (
+          <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-bold">⚠️ 데이터베이스에 연결되지 않았어요</p>
+            <p className="mt-1">
+              메뉴·예약·시간 저장이 동작하지 않아요. 배포(Vercel) 환경변수에{" "}
+              <b>NEXT_PUBLIC_SUPABASE_URL</b>, <b>NEXT_PUBLIC_SUPABASE_ANON_KEY</b>,{" "}
+              <b>SUPABASE_SERVICE_ROLE_KEY</b> 가 모두 등록됐는지 확인하고 다시
+              배포(Redeploy)해주세요.
+            </p>
+          </div>
+        )}
+        {children}
+      </main>
 
       {/* 하단 탭바 */}
       <nav className="safe-b fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/90 backdrop-blur-md">

@@ -8,6 +8,7 @@ export interface Service {
   name_en: string;
   price: number;
   unit: ServiceUnit;
+  duration_min: number;
   description_ko: string;
   description_en: string;
   sort_order: number;
@@ -41,6 +42,7 @@ export interface BookingServiceLine {
   name_en: string;
   unit: ServiceUnit;
   unit_price: number;
+  duration_min: number;
   quantity: number;
   subtotal: number;
 }

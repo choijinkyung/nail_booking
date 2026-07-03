@@ -14,12 +14,14 @@ create table if not exists public.services (
   name_en     text not null,
   price       numeric(10,2) not null default 0,   -- 단가 (CAD)
   unit        text not null default 'flat',        -- 'flat' | 'per_finger'
+  duration_min int not null default 60,            -- 예상 소요 시간(분)
   description_ko text default '',
   description_en text default '',
   sort_order  int not null default 0,
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
+alter table public.services add column if not exists duration_min int not null default 60;
 
 -- ── 예약 가능 시간대 ───────────────────────────────────────
 create table if not exists public.availability_slots (
@@ -139,13 +141,13 @@ insert into public.settings (id) values (1)
   on conflict (id) do nothing;
 
 -- 기본 가격표 시드 (비어 있을 때만)
-insert into public.services (name_ko, name_en, price, unit, sort_order)
+insert into public.services (name_ko, name_en, price, unit, duration_min, sort_order)
 select * from (values
-  ('원컬러 (젤네일)', 'One Color (Gel)', 35, 'flat',       10),
-  ('프렌치',          'French',          45, 'flat',       20),
-  ('연장',            'Extension',        5, 'per_finger', 30),
-  ('제거',            'Removal',          5, 'flat',       40)
-) as v(name_ko, name_en, price, unit, sort_order)
+  ('원컬러 (젤네일)', 'One Color (Gel)', 35, 'flat',        90, 10),
+  ('프렌치',          'French',          45, 'flat',        90, 20),
+  ('연장',            'Extension',        5, 'per_finger', 150, 30),
+  ('제거',            'Removal',          5, 'flat',        30, 40)
+) as v(name_ko, name_en, price, unit, duration_min, sort_order)
 where not exists (select 1 from public.services);
 
 -- ── 시술 사진 갤러리 ───────────────────────────────────────

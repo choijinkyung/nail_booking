@@ -6,6 +6,7 @@ import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, Service } from "@/lib/types";
 import {
   formatDateHeading,
+  formatDuration,
   formatMoney,
   formatTimeOnly,
   slotDayKey,
@@ -54,6 +55,10 @@ export function BookingWizard(props: Props) {
     () =>
       selectedServices.reduce((sum, s) => sum + Number(s.price) * qty[s.id], 0),
     [selectedServices, qty],
+  );
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + (s.duration_min || 0), 0),
+    [selectedServices],
   );
 
   const slotsByDay = useMemo(() => groupByDay(slots), [slots]);
@@ -248,6 +253,9 @@ export function BookingWizard(props: Props) {
                               ({formatMoney(s.price, currency)}/{u})
                             </span>
                           )}
+                          <span className="ml-1 text-xs text-muted">
+                            · ⏱ {formatDuration(s.duration_min, locale)}
+                          </span>
                         </span>
                         <span className="flex items-center gap-2">
                           {s.unit === "flat" && (
@@ -288,7 +296,16 @@ export function BookingWizard(props: Props) {
                 })}
               </div>
             )}
-            <TotalBar dict={dict} total={estimated} currency={currency} />
+            <TotalBar
+              dict={dict}
+              total={estimated}
+              currency={currency}
+              durationText={
+                totalDuration > 0
+                  ? formatDuration(totalDuration, locale)
+                  : ""
+              }
+            />
           </div>
         )}
 
@@ -430,6 +447,12 @@ export function BookingWizard(props: Props) {
                 <span>{dict.booking.estimated}</span>
                 <span>{formatMoney(estimated, currency)}</span>
               </div>
+              {totalDuration > 0 && (
+                <div className="mt-1 flex justify-between text-sm text-muted">
+                  <span>⏱ {dict.booking.estimatedDuration}</span>
+                  <span>{formatDuration(totalDuration, locale)}</span>
+                </div>
+              )}
             </ReviewRow>
             <ReviewRow label={dict.booking.reviewPreferred}>
               {slotLabel(slots, preferred, locale)}
@@ -549,19 +572,29 @@ function TotalBar({
   dict,
   total,
   currency,
+  durationText,
 }: {
   dict: Dict;
   total: number;
   currency: string;
+  durationText?: string;
 }) {
   return (
-    <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-100/60 px-4 py-3">
-      <span className="text-sm font-medium text-brand-800">
-        {dict.booking.estimated}
-      </span>
-      <span className="text-lg font-bold text-brand-700">
-        {formatMoney(total, currency)}
-      </span>
+    <div className="mt-4 rounded-xl bg-brand-100/60 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-brand-800">
+          {dict.booking.estimated}
+        </span>
+        <span className="text-lg font-bold text-brand-700">
+          {formatMoney(total, currency)}
+        </span>
+      </div>
+      {durationText && (
+        <div className="mt-1 flex items-center justify-between text-sm text-muted">
+          <span>⏱ {dict.booking.estimatedDuration}</span>
+          <span className="font-medium text-brand-700">{durationText}</span>
+        </div>
+      )}
     </div>
   );
 }

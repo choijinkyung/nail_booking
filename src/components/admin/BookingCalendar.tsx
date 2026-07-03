@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { BookingStatus, BookingWithSlots } from "@/lib/types";
-import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
+import { formatDuration, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 
 interface CalEvent {
   dayKey: string;
@@ -12,6 +12,7 @@ interface CalEvent {
   services: string;
   status: BookingStatus;
   amount: number; // 완료 예약의 결제액(시술가+팁), 그 외 0
+  durationMin: number;
 }
 
 const DOT: Record<string, string> = {
@@ -80,6 +81,10 @@ export function BookingCalendar({
           .join(", "),
         status: b.status,
         amount,
+        durationMin: b.services.reduce(
+          (s, l) => s + (l.duration_min || 0),
+          0,
+        ),
       });
     }
     return out;
@@ -242,8 +247,13 @@ export function BookingCalendar({
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[e.status] ?? "bg-brand-300"}`}
                 />
-                <span className="w-20 shrink-0 text-sm font-semibold text-brand-700">
+                <span className="w-24 shrink-0 text-sm font-semibold text-brand-700">
                   {formatTimeOnly(e.iso, locale)}
+                  {e.durationMin > 0 && (
+                    <span className="block text-[11px] font-normal text-muted">
+                      ⏱ {formatDuration(e.durationMin, locale)}
+                    </span>
+                  )}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-brand-900">

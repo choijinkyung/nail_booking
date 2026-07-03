@@ -69,6 +69,7 @@ function ServiceRow({
     name_en: string;
     price: number;
     unit: ServiceUnit;
+    duration_min: number;
     active: boolean;
   }) => void;
   onDelete: () => void;
@@ -78,6 +79,7 @@ function ServiceRow({
   const [nameEn, setNameEn] = useState(service.name_en);
   const [price, setPrice] = useState(String(service.price));
   const [unit, setUnit] = useState<ServiceUnit>(service.unit);
+  const [duration, setDuration] = useState(String(service.duration_min));
   const [active, setActive] = useState(service.active);
   const [saved, setSaved] = useState(false);
 
@@ -86,6 +88,7 @@ function ServiceRow({
     nameEn !== service.name_en ||
     price !== String(service.price) ||
     unit !== service.unit ||
+    duration !== String(service.duration_min) ||
     active !== service.active;
 
   const input =
@@ -124,6 +127,15 @@ function ServiceRow({
             <option value="per_finger">{a.unit_per_finger}</option>
           </select>
         </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted">{a.durationMin}</span>
+          <input
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            inputMode="numeric"
+            className={input}
+          />
+        </label>
       </div>
 
       <div className="mt-3 flex items-center justify-between">
@@ -152,6 +164,7 @@ function ServiceRow({
                 name_en: nameEn,
                 price: Number(price) || 0,
                 unit,
+                duration_min: Number(duration) || 0,
                 active,
               });
               setSaved(true);

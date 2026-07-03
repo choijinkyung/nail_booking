@@ -91,6 +91,7 @@ export async function createBooking(
       name_en: svc.name_en,
       unit: svc.unit,
       unit_price: Number(svc.price),
+      duration_min: Number(svc.duration_min) || 0,
       quantity: qty,
       subtotal,
     });

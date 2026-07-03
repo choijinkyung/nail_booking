@@ -1,7 +1,7 @@
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
-import { formatMoney, unitLabel } from "@/lib/format";
+import { formatDuration, formatMoney, unitLabel } from "@/lib/format";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ButtonLink, Card, NoticeBanner, SectionTitle } from "@/components/ui";
 
@@ -118,6 +118,9 @@ export default async function LandingPage() {
                       <div>
                         <p className="font-medium text-brand-900">
                           {isEn ? s.name_en : s.name_ko}
+                          <span className="ml-2 text-xs font-normal text-muted">
+                            ⏱ {formatDuration(s.duration_min, locale)}
+                          </span>
                         </p>
                         {(isEn ? s.description_en : s.description_ko) && (
                           <p className="text-xs text-muted">

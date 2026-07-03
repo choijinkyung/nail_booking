@@ -114,6 +114,21 @@ export function formatTimeOnly(iso: string, locale: Locale): string {
   return `${get("hour")}:${get("minute")} ${ap}`;
 }
 
+/** 소요 시간(분) → "1시간 30분" / "1h 30m" */
+export function formatDuration(min: number, locale: Locale): string {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (locale === "ko") {
+    if (h && mm) return `${h}시간 ${mm}분`;
+    if (h) return `${h}시간`;
+    return `${mm}분`;
+  }
+  if (h && mm) return `${h}h ${mm}m`;
+  if (h) return `${h}h`;
+  return `${mm}m`;
+}
+
 export function unitLabel(unit: ServiceUnit, locale: Locale): string {
   if (unit === "per_finger") return locale === "ko" ? "손가락당" : "per finger";
   return "";
