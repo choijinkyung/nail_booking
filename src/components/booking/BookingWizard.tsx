@@ -504,6 +504,7 @@ export function BookingWizard(props: Props) {
         {step < STEPS.length - 1 ? (
           <button
             onClick={next}
+            disabled={validateStep(step) !== ""}
             className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
           >
             {dict.common.next}
@@ -511,7 +512,7 @@ export function BookingWizard(props: Props) {
         ) : (
           <button
             onClick={submit}
-            disabled={pending}
+            disabled={pending || !agree || pickedTimes.length === 0}
             className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
           >
             {pending ? dict.booking.submitting : dict.booking.submitRequest}
