@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot } from "@/lib/types";
 import { formatTimeOnly, slotDayKey } from "@/lib/format";
-import { fitFrom, sortSlots } from "@/lib/scheduling";
+import { canBook, sortSlots } from "@/lib/scheduling";
 
 const KO_MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 const EN_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -32,11 +32,11 @@ export function TimePicker({
   const isEn = locale === "en";
   const sorted = useMemo(() => sortSlots(slots), [slots]);
 
-  // 소요시간이 들어가는(연속 open) 시작 슬롯만 선택 가능
+  // 소요시간이 들어가고(연속 open) 공백 규칙(단독 30분 공백 차단)을 만족하는 시작 슬롯만 선택 가능
   const selectable = useMemo(() => {
     const set = new Set<string>();
     for (const s of sorted) {
-      if (s.status === "open" && fitFrom(sorted, s.id, durationMin)) set.add(s.id);
+      if (s.status === "open" && canBook(sorted, s.id, durationMin)) set.add(s.id);
     }
     return set;
   }, [sorted, durationMin]);

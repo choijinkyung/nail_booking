@@ -10,7 +10,7 @@ import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
 import { hashPassword, makeSalt } from "@/lib/hash";
 import { findBookingCodeByNamePassword } from "@/lib/data";
-import { bookingDurationMin, fitFrom, sortSlots } from "@/lib/scheduling";
+import { bookingDurationMin, canBook, fitFrom, sortSlots } from "@/lib/scheduling";
 import type { Booking, BookingServiceLine, Service } from "@/lib/types";
 
 /** 언어 전환 — 쿠키 설정 후 페이지 새로고침용 */
@@ -126,26 +126,28 @@ export async function createBooking(
   if (lines.length === 0) return { ok: false, error: "NO_SERVICE" };
   const estimatedTotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
 
-  // 2) 슬롯 유효성 확인 (열려 있는 미래 슬롯인지)
+  // 2) 슬롯 유효성 확인 — 시술 길이가 들어가고(연속 open) 공백 규칙을
+  //    만족하는 시작 슬롯만 허용 (단독 30분 공백 차단, 뒤 예약과 겹침 차단).
+  //    미래의 비-blocked 슬롯 전체를 기준으로 판정해야 앞뒤 예약을 볼 수 있다.
   const nowIso = new Date().toISOString();
-  const wantedSlotIds = [
-    input.preferred_slot_id,
-    ...(input.alternative_slot_ids ?? []),
-  ];
-  const { data: slotRows } = await sb
+  const duration = bookingDurationMin(lines);
+  const { data: futureRows } = await sb
     .from("availability_slots")
-    .select("id, starts_at, ends_at, status, note_ko, note_en, created_at")
-    .in("id", wantedSlotIds);
-  const validSlotIds = new Set(
-    ((slotRows as { id: string; status: string; starts_at: string }[]) ?? [])
-      .filter((s) => s.status === "open" && s.starts_at >= nowIso)
-      .map((s) => s.id),
+    .select("id, starts_at, status")
+    .gte("starts_at", nowIso)
+    .neq("status", "blocked")
+    .order("starts_at", { ascending: true });
+  const futureSorted = sortSlots(
+    (futureRows as { id: string; starts_at: string; status: string }[]) ?? [],
   );
-  if (!validSlotIds.has(input.preferred_slot_id)) {
+  const slotRows = futureSorted;
+  if (!canBook(futureSorted, input.preferred_slot_id, duration)) {
     return { ok: false, error: "SLOT_TAKEN" };
   }
   const altIds = [...new Set(input.alternative_slot_ids ?? [])].filter(
-    (id) => id !== input.preferred_slot_id && validSlotIds.has(id),
+    (id) =>
+      id !== input.preferred_slot_id &&
+      Boolean(canBook(futureSorted, id, duration)),
   );
 
   // 3) 고객(단골) upsert — 연락처를 키로 매칭
