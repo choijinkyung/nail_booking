@@ -8,6 +8,7 @@ import {
   formatDateHeading,
   formatDuration,
   formatMoney,
+  formatServicePrice,
   formatTimeOnly,
   unitLabel,
 } from "@/lib/format";
@@ -47,6 +48,7 @@ export function BookingWizard(props: Props) {
   const [referral, setReferral] = useState("");
   const [refFile, setRefFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
+  const [earlyContact, setEarlyContact] = useState(false);
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
   const [resultCode, setResultCode] = useState<string | null>(null);
@@ -83,7 +85,10 @@ export function BookingWizard(props: Props) {
   }
   function validateStep(s: number): string {
     if (s === 0 && selectedServices.length === 0) return dict.booking.errService;
-    if (s === 1 && pickedTimes.length === 0) return dict.booking.errPreferred;
+    if (s === 1) {
+      if (pickedTimes.length === 0) return dict.booking.errPreferred;
+      if (pickedTimes.length < 2) return dict.booking.errAlternative;
+    }
     if (s === 2) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
@@ -149,6 +154,7 @@ export function BookingWizard(props: Props) {
         reference_url,
         reference_path,
         note,
+        early_contact: earlyContact,
       });
       if (res.ok) setResultCode(res.code);
       else setError(mapError(res.error, dict));
@@ -270,7 +276,7 @@ export function BookingWizard(props: Props) {
                         <span className="flex items-center gap-2">
                           {s.unit === "flat" && (
                             <span className="font-semibold text-brand-700">
-                              {formatMoney(s.price, currency)}
+                              {formatServicePrice(s.price, currency, s.price_from)}
                             </span>
                           )}
                           <span
@@ -404,6 +410,15 @@ export function BookingWizard(props: Props) {
                 />
               )}
             </Field>
+
+            {/* 디자인/재료 안내 — 원하는 디자인 첨부 유도 + 사전 컨펌 책임 */}
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+              <p className="font-bold">🎨 {dict.booking.designNoticeTitle}</p>
+              <p className="mt-1 whitespace-pre-line">
+                {dict.booking.designNotice}
+              </p>
+            </div>
+
             <Field label={dict.booking.memo}>
               <textarea
                 value={note}
@@ -412,6 +427,24 @@ export function BookingWizard(props: Props) {
                 className={inputClass}
               />
             </Field>
+
+            {/* 일찍 시술 가능 시 연락받기 — 눈에 띄게 강조 */}
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-brand-400 bg-brand-50 p-4">
+              <input
+                type="checkbox"
+                checked={earlyContact}
+                onChange={(e) => setEarlyContact(e.target.checked)}
+                className="mt-0.5 h-5 w-5 accent-brand-600"
+              />
+              <span>
+                <span className="block text-sm font-bold text-brand-800">
+                  ⏰ {dict.booking.earlyContactTitle}
+                </span>
+                <span className="mt-0.5 block text-xs text-brand-700">
+                  {dict.booking.earlyContactDesc}
+                </span>
+              </span>
+            </label>
           </div>
         )}
 
@@ -512,7 +545,7 @@ export function BookingWizard(props: Props) {
         ) : (
           <button
             onClick={submit}
-            disabled={pending || !agree || pickedTimes.length === 0}
+            disabled={pending || !agree || pickedTimes.length < 2}
             className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
           >
             {pending ? dict.booking.submitting : dict.booking.submitRequest}
@@ -639,6 +672,8 @@ function mapError(code: string, dict: Dict): string {
       return dict.booking.errService;
     case "NO_PREFERRED":
       return dict.booking.errPreferred;
+    case "NO_ALTERNATIVE":
+      return dict.booking.errAlternative;
     case "PASSWORD":
       return dict.booking.errPassword;
     case "SLOT_TAKEN":

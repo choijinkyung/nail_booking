@@ -13,6 +13,15 @@ export function formatMoney(amount: number, currency = "CAD"): string {
   return `${symbol}${formatted}`;
 }
 
+/** 가격 표시 — price_from(이상)이면 "$30~" 처럼 물결을 붙인다. */
+export function formatServicePrice(
+  amount: number,
+  currency = "CAD",
+  from = false,
+): string {
+  return `${formatMoney(amount, currency)}${from ? "~" : ""}`;
+}
+
 const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

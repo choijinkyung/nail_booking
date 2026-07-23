@@ -413,6 +413,26 @@ export async function completeBooking(input: {
   const finalPrice = Math.max(0, Number(input.finalPrice) || 0);
   const tip = Math.max(0, Number(input.tip) || 0);
 
+  // 아직 시작하지 않은(미래) 예약은 완료 처리 불가 — 시술 시작 시각 이후만 허용
+  const { data: bRow } = await sb
+    .from("bookings")
+    .select("confirmed_slot_id")
+    .eq("id", input.bookingId)
+    .single();
+  const confirmedSlotId = (bRow as { confirmed_slot_id?: string | null } | null)
+    ?.confirmed_slot_id;
+  if (confirmedSlotId) {
+    const { data: slotRow } = await sb
+      .from("availability_slots")
+      .select("starts_at")
+      .eq("id", confirmedSlotId)
+      .single();
+    const startsAt = (slotRow as { starts_at?: string } | null)?.starts_at;
+    if (startsAt && startsAt > new Date().toISOString()) {
+      return { ok: false, error: "NOT_STARTED" };
+    }
+  }
+
   const { data, error } = await sb
     .from("bookings")
     .update({
@@ -536,6 +556,7 @@ export async function saveService(input: {
   name_ko: string;
   name_en: string;
   price: number;
+  price_from: boolean;
   unit: "flat" | "per_finger";
   duration_min: number;
   active: boolean;
@@ -548,6 +569,7 @@ export async function saveService(input: {
       name_ko: input.name_ko.trim(),
       name_en: input.name_en.trim(),
       price: Number(input.price) || 0,
+      price_from: Boolean(input.price_from),
       unit: input.unit,
       duration_min: Math.max(0, Math.round(Number(input.duration_min) || 0)),
       active: input.active,

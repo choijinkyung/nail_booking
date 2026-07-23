@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   etransfer_note_ko: "",
   etransfer_note_en: "",
   currency: "CAD",
+  booking_window_days: 14,
   updated_at: "",
 };
 

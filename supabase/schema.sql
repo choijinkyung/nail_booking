@@ -22,6 +22,7 @@ create table if not exists public.services (
   created_at  timestamptz not null default now()
 );
 alter table public.services add column if not exists duration_min int not null default 60;
+alter table public.services add column if not exists price_from boolean not null default false;
 
 -- ── 예약 가능 시간대 ───────────────────────────────────────
 create table if not exists public.availability_slots (
@@ -100,6 +101,7 @@ alter table public.bookings add column if not exists occupied_slot_ids uuid[] no
 alter table public.bookings add column if not exists proposed_slot_ids uuid[] not null default '{}';
 alter table public.bookings add column if not exists reference_url text default '';
 alter table public.bookings add column if not exists reference_path text default '';
+alter table public.bookings add column if not exists early_contact boolean not null default false;
 create index if not exists bookings_name_idx on public.bookings (lower(customer_name));
 create index if not exists bookings_customer_idx on public.bookings (customer_id);
 create index if not exists bookings_status_idx on public.bookings (status);
@@ -181,6 +183,23 @@ insert into storage.buckets (id, name, public)
 values ('gallery', 'gallery', true)
 on conflict (id) do nothing;
 
+-- ── 반복 영업시간 & 휴무 (예약 가능 시간 자동생성용) ──
+create table if not exists public.business_hours (
+  weekday    int primary key check (weekday between 0 and 6),
+  enabled    boolean not null default false,
+  start_min  int not null default 600,
+  end_min    int not null default 1200,
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.schedule_days_off (
+  day        date primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.availability_slots
+  add column if not exists generated boolean not null default false;
+alter table public.settings
+  add column if not exists booking_window_days int not null default 14;
+
 -- ── RLS: 브라우저에서 직접 접근 차단(앱은 service_role로만 접근) ──
 alter table public.services           enable row level security;
 alter table public.availability_slots enable row level security;
@@ -188,6 +207,8 @@ alter table public.bookings           enable row level security;
 alter table public.customers          enable row level security;
 alter table public.settings           enable row level security;
 alter table public.gallery_photos     enable row level security;
+alter table public.business_hours     enable row level security;
+alter table public.schedule_days_off  enable row level security;
 -- 정책을 만들지 않으므로 anon/authenticated 직접 접근은 모두 거부됩니다.
 -- service_role 키는 RLS를 우회하므로 서버(Server Actions)에서만 데이터에 접근합니다.
 -- (갤러리 '이미지 파일'은 public 버킷이라 URL로 바로 열람 가능)

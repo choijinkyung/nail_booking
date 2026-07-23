@@ -1,7 +1,7 @@
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
-import { formatDuration, formatMoney, unitLabel } from "@/lib/format";
+import { formatDuration, formatServicePrice, unitLabel } from "@/lib/format";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ButtonLink, Card, NoticeBanner, SectionTitle } from "@/components/ui";
 
@@ -129,7 +129,7 @@ export default async function LandingPage() {
                         )}
                       </div>
                       <p className="whitespace-nowrap font-semibold text-brand-700">
-                        {formatMoney(s.price, settings.currency)}
+                        {formatServicePrice(s.price, settings.currency, s.price_from)}
                         {u && (
                           <span className="ml-1 text-xs font-normal text-muted">
                             /{u}
@@ -154,8 +154,14 @@ export default async function LandingPage() {
         </section>
 
         <section className="mt-8 flex justify-center gap-2">
-          <ButtonLink href="/gallery" variant="outline">
-            🖼️ {dict.landing.viewGallery}
+          {/* 갤러리 기능 임시 비활성화 — '시술 사진 보기'는 인스타그램으로 이동 */}
+          <ButtonLink
+            href="https://www.instagram.com/zena_12.7"
+            variant="outline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            📸 {dict.landing.viewGallery}
           </ButtonLink>
           <ButtonLink href="/status" variant="ghost">
             🔎 {dict.landing.ctaLookup}

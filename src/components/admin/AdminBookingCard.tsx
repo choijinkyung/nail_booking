@@ -23,6 +23,9 @@ interface Props {
   currency: string;
 }
 
+// 임시: 확인 대기의 '다른 시간 제안 / 가능시간 안내' UI를 화면에서 숨김 (코드는 유지)
+const SHOW_PROPOSE_TIMES = false;
+
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
   confirmed: "bg-green-100 text-green-800",
@@ -41,8 +44,6 @@ export function AdminBookingCard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState(booking.admin_message ?? "");
-  const [otherSlot, setOtherSlot] = useState("");
-  const [showPropose, setShowPropose] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
   const [offerSlots, setOfferSlots] = useState<string[]>([]);
   const [showChangeTime, setShowChangeTime] = useState(false);
@@ -62,7 +63,14 @@ export function AdminBookingCard({
     startTransition(async () => {
       const res = await fn();
       if (res.ok) router.refresh();
-      else setErr(res.error === "SLOT_TAKEN" ? a.slotBookedWarn : dict.booking.errGeneric);
+      else
+        setErr(
+          res.error === "SLOT_TAKEN"
+            ? a.slotBookedWarn
+            : res.error === "NOT_STARTED"
+              ? a.completeTooEarly
+              : dict.booking.errGeneric,
+        );
     });
   }
 
@@ -78,6 +86,23 @@ export function AdminBookingCard({
   ];
 
   const total = formatMoney(booking.estimated_total, currency);
+
+  // 아직 시작 전(미래) 예약은 완료 처리 불가
+  const notStarted =
+    !!booking.confirmed_slot &&
+    booking.confirmed_slot.starts_at > new Date().toISOString();
+
+  // 확정시간 변경 후보: 손님이 고른 시간(1지망+대체) 중, 현재 확정 시간이 아니고
+  // 아직 열려 있는 것만. (손님이 선택하지 않은 시간으로는 옮길 수 없음)
+  const changeCandidates = [
+    ...(booking.preferred_slot ? [booking.preferred_slot] : []),
+    ...booking.alternative_slots,
+  ].filter(
+    (s, i, arr) =>
+      s.id !== booking.confirmed_slot?.id &&
+      s.status === "open" &&
+      arr.findIndex((x) => x.id === s.id) === i,
+  );
 
   return (
     <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
@@ -192,6 +217,12 @@ export function AdminBookingCard({
         </p>
       )}
 
+      {booking.early_contact && (
+        <p className="mt-2 rounded-lg border border-brand-300 bg-brand-50 p-2 text-sm font-semibold text-brand-800">
+          ⏰ {a.earlyContactBadge}
+        </p>
+      )}
+
       {booking.reference_url && (
         <a
           href={booking.reference_url}
@@ -268,52 +299,15 @@ export function AdminBookingCard({
             className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
 
-          {/* 다른 시간 제안 */}
-          <button
-            onClick={() => setShowPropose((v) => !v)}
-            className="text-sm font-medium text-brand-600"
-          >
-            {showPropose ? "▲" : "▼"} {a.proposeOther}
-          </button>
-          {showPropose && (
-            <div className="flex gap-2">
-              <select
-                value={otherSlot}
-                onChange={(e) => setOtherSlot(e.target.value)}
-                className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm"
-              >
-                <option value="">{a.chooseConfirmSlot}</option>
-                {openSlots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {formatDateTime(s.starts_at, locale)}
-                  </option>
-                ))}
-              </select>
-              <button
-                disabled={pending || !otherSlot}
-                onClick={() =>
-                  run(() =>
-                    confirmBooking({
-                      bookingId: booking.id,
-                      slotId: otherSlot,
-                      message,
-                    }),
-                  )
-                }
-                className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-              >
-                {dict.common.confirm}
-              </button>
-            </div>
+          {/* 다른 시간 제안 / 조정 — 가능한 시간 여러 개를 골라 손님에게 보내면 손님이 선택 */}
+          {SHOW_PROPOSE_TIMES && (
+            <button
+              onClick={() => setShowOffer((v) => !v)}
+              className="text-sm font-medium text-brand-600"
+            >
+              {showOffer ? "▲" : "▼"} {a.proposeOther}
+            </button>
           )}
-
-          {/* 가능시간 안내 (여러 시간 제안 → 손님이 선택) */}
-          <button
-            onClick={() => setShowOffer((v) => !v)}
-            className="text-sm font-medium text-brand-600"
-          >
-            {showOffer ? "▲" : "▼"} {a.proposeTimesBtn}
-          </button>
           {showOffer && (
             <div className="rounded-xl border border-brand-100 p-2">
               <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
@@ -380,10 +374,13 @@ export function AdminBookingCard({
           <div className="flex gap-2">
             <button
               disabled={pending}
-              onClick={() => setShowComplete(true)}
+              title={notStarted ? a.completeTooEarly : undefined}
+              onClick={() =>
+                notStarted ? setErr(a.completeTooEarly) : setShowComplete(true)
+              }
               className="flex-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              ✅ {a.markCompleted}
+              ✅ {notStarted ? a.completeAfterStart : a.markCompleted}
             </button>
             <button
               disabled={pending}
@@ -393,6 +390,9 @@ export function AdminBookingCard({
               {a.cancelBooking}
             </button>
           </div>
+          {notStarted && (
+            <p className="text-[11px] text-muted">{a.completeTooEarly}</p>
+          )}
           {/* 확정 후에도 시간 변경 가능 */}
           <button
             onClick={() => setShowChangeTime((v) => !v)}
@@ -405,10 +405,15 @@ export function AdminBookingCard({
               <select
                 value={changeSlot}
                 onChange={(e) => setChangeSlot(e.target.value)}
-                className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm"
+                disabled={changeCandidates.length === 0}
+                className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm disabled:opacity-50"
               >
-                <option value="">{a.chooseConfirmSlot}</option>
-                {openSlots.map((s) => (
+                <option value="">
+                  {changeCandidates.length === 0
+                    ? a.noOtherChosenTimes
+                    : a.chooseConfirmSlot}
+                </option>
+                {changeCandidates.map((s) => (
                   <option key={s.id} value={s.id}>
                     {formatDateTime(s.starts_at, locale)}
                   </option>
@@ -430,6 +435,9 @@ export function AdminBookingCard({
                 {dict.common.confirm}
               </button>
             </div>
+          )}
+          {showChangeTime && (
+            <p className="text-[11px] text-muted">{a.changeTimeHint}</p>
           )}
         </div>
       )}

@@ -59,6 +59,7 @@ export interface CreateBookingInput {
   reference_url?: string;
   reference_path?: string;
   note?: string;
+  early_contact?: boolean;
 }
 
 export type CreateBookingResult =
@@ -149,6 +150,10 @@ export async function createBooking(
       id !== input.preferred_slot_id &&
       Boolean(canBook(futureSorted, id, duration)),
   );
+  // 대체 시간 최소 1개 필수
+  if (altIds.length === 0) {
+    return { ok: false, error: "NO_ALTERNATIVE" };
+  }
 
   // 3) 고객(단골) upsert — 연락처를 키로 매칭
   const referral = (input.referral_source ?? "").trim();
@@ -205,6 +210,7 @@ export async function createBooking(
       services: lines,
       estimated_total: estimatedTotal,
       note: (input.note ?? "").trim(),
+      early_contact: Boolean(input.early_contact),
       preferred_slot_id: input.preferred_slot_id,
       alternative_slot_ids: altIds,
       status: "pending",

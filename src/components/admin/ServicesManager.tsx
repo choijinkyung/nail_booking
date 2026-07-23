@@ -68,6 +68,7 @@ function ServiceRow({
     name_ko: string;
     name_en: string;
     price: number;
+    price_from: boolean;
     unit: ServiceUnit;
     duration_min: number;
     active: boolean;
@@ -78,6 +79,7 @@ function ServiceRow({
   const [nameKo, setNameKo] = useState(service.name_ko);
   const [nameEn, setNameEn] = useState(service.name_en);
   const [price, setPrice] = useState(String(service.price));
+  const [priceFrom, setPriceFrom] = useState(service.price_from);
   const [unit, setUnit] = useState<ServiceUnit>(service.unit);
   const [duration, setDuration] = useState(String(service.duration_min));
   const [active, setActive] = useState(service.active);
@@ -87,6 +89,7 @@ function ServiceRow({
     nameKo !== service.name_ko ||
     nameEn !== service.name_en ||
     price !== String(service.price) ||
+    priceFrom !== service.price_from ||
     unit !== service.unit ||
     duration !== String(service.duration_min) ||
     active !== service.active;
@@ -115,6 +118,15 @@ function ServiceRow({
             inputMode="decimal"
             className={input}
           />
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-brand-700">
+            <input
+              type="checkbox"
+              checked={priceFrom}
+              onChange={(e) => setPriceFrom(e.target.checked)}
+              className="h-3.5 w-3.5 accent-brand-600"
+            />
+            {a.priceFrom}
+          </label>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-muted">{a.unit}</span>
@@ -163,6 +175,7 @@ function ServiceRow({
                 name_ko: nameKo,
                 name_en: nameEn,
                 price: Number(price) || 0,
+                price_from: priceFrom,
                 unit,
                 duration_min: Number(duration) || 0,
                 active,

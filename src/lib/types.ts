@@ -7,6 +7,7 @@ export interface Service {
   name_ko: string;
   name_en: string;
   price: number;
+  price_from: boolean; // true면 '이상(부터)' 가격 — 고객 화면에 "$30~" 로 표시
   unit: ServiceUnit;
   duration_min: number;
   description_ko: string;
@@ -25,6 +26,20 @@ export interface AvailabilitySlot {
   status: SlotStatus;
   note_ko: string;
   note_en: string;
+  generated: boolean;
+  created_at: string;
+}
+
+export interface BusinessHour {
+  weekday: number; // 0=Sun ... 6=Sat
+  enabled: boolean;
+  start_min: number;
+  end_min: number;
+  updated_at: string;
+}
+
+export interface ScheduleDayOff {
+  day: string; // YYYY-MM-DD
   created_at: string;
 }
 
@@ -84,6 +99,7 @@ export interface Booking {
   proposed_slot_ids: string[];
   reference_url: string;
   reference_path: string;
+  early_contact: boolean; // 일찍 시술 가능할 때 연락받기 희망 여부
   created_at: string;
   updated_at: string;
 }
@@ -131,5 +147,6 @@ export interface Settings {
   etransfer_note_ko: string;
   etransfer_note_en: string;
   currency: string;
+  booking_window_days: number;
   updated_at: string;
 }
