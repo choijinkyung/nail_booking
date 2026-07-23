@@ -1,76 +1,76 @@
-# Square-style Admin Scheduling Implementation Plan
+# Square 스타일 관리자 스케줄링 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** 필수 하위 스킬 — superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans 를 사용해 이 계획을 태스크 단위로 구현하세요. 각 단계는 체크박스(`- [ ]`) 문법으로 추적합니다.
 
-**Goal:** Give the admin a Square-scheduler experience — block time by range, create bookings directly (instantly confirmed), and manage customers by phone — all on the existing admin calendar.
+**목표:** 관리자에게 Square 스케줄러 경험을 제공한다 — 시간 범위 블록, 관리자 직접 예약(즉시 확정), 전화번호 기반 고객 관리 — 모두 기존 관리자 캘린더 위에서.
 
-**Architecture:** Server actions in `src/app/admin/actions.ts` (all gated by `assertAdmin()`, DB via service_role) do the writes; the existing 30-min slot grid absorbs range-blocks via a new `block_group` column. The `/admin/calendar` `BookingCalendar` component gains block rendering + a new-booking form + a block form; `/admin/customers` gains registration + phone search. Pure scheduling/mapping logic is extracted into `src/lib/` and unit-tested with Vitest; server actions and UI are verified with `tsc`, `lint`, and manual dev-server checks.
+**아키텍처:** `src/app/admin/actions.ts` 의 서버 액션(모두 `assertAdmin()` 로 보호, DB는 service_role 경유)이 쓰기를 담당한다. 범위 블록은 기존 30분 슬롯 격자에 새 `block_group` 컬럼으로 흡수한다. `/admin/calendar` 의 `BookingCalendar` 컴포넌트에 블록 렌더링 + 새 예약 폼 + 블록 폼을 추가하고, `/admin/customers` 에 등록 + 전화 검색을 추가한다. 순수한 스케줄링/매핑 로직은 `src/lib/` 로 추출해 Vitest 단위 테스트로 검증하고, 서버 액션과 UI는 `tsc`·`lint`·개발서버 수동 확인으로 검증한다.
 
-**Tech Stack:** Next.js 16 (server actions, `"use server"`), React 19, Supabase (`@supabase/supabase-js`, service_role), TypeScript strict, Tailwind v4, Vitest (new, for pure helpers only).
+**기술 스택:** Next.js 16(서버 액션, `"use server"`), React 19, Supabase(`@supabase/supabase-js`, service_role), TypeScript strict, Tailwind v4, Vitest(신규, 순수 헬퍼 전용).
 
-## Global Constraints
+## 전역 제약 (Global Constraints)
 
-- Next.js 16 in this repo may differ from training data — before writing Next-specific code, check `node_modules/next/dist/docs/`. (from AGENTS.md)
-- Every admin server action MUST call `await assertAdmin()` first (`@/lib/auth`). It throws `"UNAUTHORIZED"`.
-- DB is reached ONLY server-side via `createSupabaseAdminClient()` (`@/lib/supabase/admin`); RLS denies browser access.
-- Slots are a rigid 30-min grid. `availability_slots.starts_at` is UNIQUE. `status ∈ {"open","booked","blocked"}`.
-- Timezone display is `America/Vancouver`; slot instants are stored as UTC ISO. Client builds ISO lists from the admin's local time (same pattern as the existing `AvailabilityManager` / `addSlots`) — do NOT do server-side Vancouver↔UTC math.
-- Admin-created bookings: status `confirmed` immediately, **NO customer email**, scheduling rules (`canBook` 60-min gap) NOT applied; only overlap with an existing `booked` slot is rejected.
-- New-vs-returning is computed from completed-visit count (0 = new, 1+ = returning). No manual tags.
-- `bookings.code` is NOT NULL UNIQUE; `customer_name`/`customer_contact` NOT NULL; `lookup_password_hash/salt` default `''` (leave empty for admin bookings); `preferred_slot_id`/`confirmed_slot_id` nullable.
-- `customers.contact` is NOT NULL UNIQUE — the dedup key.
-- Verification per task: `npx tsc --noEmit` (0 errors) and `npm run lint` (0 errors) always; `npx vitest run` for tasks that add pure helpers; manual dev-server (`npm run dev`) checks for UI/action tasks.
-- Commit after every task. Do not push unless asked.
+- 이 repo의 Next.js 16 은 학습 데이터와 다를 수 있음 — Next 관련 코드를 쓰기 전 `node_modules/next/dist/docs/` 를 확인할 것. (AGENTS.md)
+- 모든 관리자 서버 액션은 반드시 맨 앞에서 `await assertAdmin()`(`@/lib/auth`) 호출. 미인증 시 `"UNAUTHORIZED"` throw.
+- DB 접근은 오직 서버에서 `createSupabaseAdminClient()`(`@/lib/supabase/admin`) 로만. RLS가 브라우저 접근을 차단함.
+- 슬롯은 30분 고정 격자. `availability_slots.starts_at` 는 UNIQUE. `status ∈ {"open","booked","blocked"}`.
+- 표시 시간대는 `America/Vancouver`, 슬롯 인스턴트는 UTC ISO 로 저장. ISO 목록은 **클라이언트**가 관리자 로컬 시간 기준으로 만든다(기존 `AvailabilityManager` / `addSlots` 패턴과 동일) — 서버에서 밴쿠버↔UTC 변환 계산을 하지 말 것.
+- 관리자 예약: 즉시 `confirmed` 상태, **고객 이메일 없음**, 스케줄링 규칙(`canBook` 60분 갭) 적용 안 함. 이미 `booked` 인 슬롯과의 겹침만 거부.
+- 신규/재방문은 완료 방문 수로 계산(0 = 신규, 1+ = 재방문). 수동 태그 없음.
+- `bookings.code` 는 NOT NULL UNIQUE. `customer_name`/`customer_contact` NOT NULL. `lookup_password_hash/salt` 는 기본값 `''`(관리자 예약은 빈 값 유지). `preferred_slot_id`/`confirmed_slot_id` nullable.
+- `customers.contact` 는 NOT NULL UNIQUE — 중복 판정 키.
+- 태스크별 검증: `npx tsc --noEmit`(에러 0) 와 `npm run lint`(에러 0) 는 항상. 순수 헬퍼를 추가하는 태스크는 `npx vitest run`. UI/액션 태스크는 개발서버(`npm run dev`) 수동 확인.
+- 태스크마다 커밋. 요청 없으면 push 하지 말 것.
 
-## File Structure
+## 파일 구조 (File Structure)
 
-**New files**
-- `vitest.config.ts` — Vitest config (Node env, no alias needed; tests use relative imports).
-- `src/lib/code.ts` — `generateCode()` (moved out of `src/app/actions.ts`, shared by public + admin booking).
-- `src/lib/code.test.ts` — unit test for `generateCode`.
-- `src/lib/bookingLines.ts` — pure `buildServiceLines(services, selections)` mapper.
-- `src/lib/bookingLines.test.ts` — unit test.
-- `src/lib/scheduling.test.ts` — unit tests for `slotStartsForDuration` (+ existing helpers regression).
-- `src/components/admin/CustomerPicker.tsx` — shared customer select/register control (phone lookup + inline new).
-- `src/components/admin/NewBookingForm.tsx` — admin booking creation form (used from the calendar day panel).
-- `src/components/admin/BlockForm.tsx` — range/all-day block form (used from the calendar day panel).
-- `supabase/migrations/20260703020000_block_group.sql` — adds `availability_slots.block_group`.
+**신규 파일**
+- `vitest.config.ts` — Vitest 설정(Node 환경, alias 불필요; 테스트는 상대경로 import).
+- `src/lib/code.ts` — `generateCode()`(`src/app/actions.ts` 에서 이동, 공개/관리자 예약 공유).
+- `src/lib/code.test.ts` — `generateCode` 단위 테스트.
+- `src/lib/bookingLines.ts` — 순수 `buildServiceLines(services, selections)` 매퍼.
+- `src/lib/bookingLines.test.ts` — 단위 테스트.
+- `src/lib/scheduling.test.ts` — `slotStartsForDuration` 단위 테스트(+ 기존 헬퍼 회귀).
+- `src/components/admin/CustomerPicker.tsx` — 공유 고객 선택/등록 컨트롤(전화 조회 + 인라인 신규).
+- `src/components/admin/NewBookingForm.tsx` — 관리자 예약 생성 폼(캘린더 날짜 패널에서 사용).
+- `src/components/admin/BlockForm.tsx` — 범위/하루종일 블록 폼(캘린더 날짜 패널에서 사용).
+- `supabase/migrations/20260703020000_block_group.sql` — `availability_slots.block_group` 추가.
 
-**Modified files**
-- `supabase/schema.sql` — mirror the `block_group` column.
-- `src/lib/types.ts` — add `block_group` to `AvailabilitySlot`; add admin action input types if helpful.
-- `src/lib/scheduling.ts` — add `slotStartsForDuration`.
-- `src/app/actions.ts` — import `generateCode` from `@/lib/code` (remove local copy).
-- `src/app/admin/actions.ts` — new actions: `blockRange`, `removeBlock`, `createAdminBooking`, `createCustomer`, `updateCustomer`, `findCustomerByContact`; keep `saveCustomerMemo` as a thin wrapper over `updateCustomer` (or leave; see Task 6).
-- `src/lib/data.ts` — `getBlocks()` (grouped blocked slots) for the calendar; ensure `getAllServices`/`getCustomers` available to calendar page.
-- `src/app/admin/calendar/page.tsx` — fetch blocks + active services + customers, pass to `BookingCalendar`.
-- `src/components/admin/BookingCalendar.tsx` — render blocks; add ➕ New booking / ⛔ Block entry points on the day panel.
-- `src/app/admin/customers/page.tsx` — pass `isReturning` and keep aggregation.
-- `src/components/admin/CustomersManager.tsx` — register button + phone search + new/returning badge; use `updateCustomer`.
-- `src/lib/i18n.ts` — new admin dict keys (ko + en).
+**수정 파일**
+- `supabase/schema.sql` — `block_group` 컬럼 미러링.
+- `src/lib/types.ts` — `AvailabilitySlot` 에 `block_group` 추가; 필요 시 액션 입력 타입 추가.
+- `src/lib/scheduling.ts` — `slotStartsForDuration` 추가.
+- `src/app/actions.ts` — `@/lib/code` 의 `generateCode` import(로컬 사본 제거).
+- `src/app/admin/actions.ts` — 신규 액션: `blockRange`, `removeBlock`, `createAdminBooking`, `createCustomer`, `updateCustomer`, `findCustomerByContact`; `saveCustomerMemo` 는 `updateCustomer` 를 감싸는 얇은 래퍼로 유지(또는 그대로; Task 6 참고).
+- `src/lib/data.ts` — 캘린더용 `getBlocks()`(그룹화된 blocked 슬롯); `getAllServices`/`getCustomers` 를 캘린더 페이지에서 사용 가능하게.
+- `src/app/admin/calendar/page.tsx` — 블록 + 활성 시술 + 고객을 fetch 해 `BookingCalendar` 에 전달.
+- `src/components/admin/BookingCalendar.tsx` — 블록 렌더링; 날짜 패널에 ➕새 예약 / ⛔블록 진입점 추가.
+- `src/app/admin/customers/page.tsx` — `isReturning` 전달, 집계 유지.
+- `src/components/admin/CustomersManager.tsx` — 등록 버튼 + 전화 검색 + 신규/재방문 배지; `updateCustomer` 사용.
+- `src/lib/i18n.ts` — 신규 관리자 dict 키(ko + en).
 
 ---
 
-## Phase 1 — Backend & Customer CRM
+## Phase 1 — 백엔드 & 고객 CRM
 
-### Task 1: Vitest setup + `slotStartsForDuration` pure helper
+### Task 1: Vitest 셋업 + `slotStartsForDuration` 순수 헬퍼
 
-**Files:**
-- Create: `vitest.config.ts`, `src/lib/scheduling.test.ts`
-- Modify: `src/lib/scheduling.ts`, `package.json`
+**파일:**
+- 생성: `vitest.config.ts`, `src/lib/scheduling.test.ts`
+- 수정: `src/lib/scheduling.ts`, `package.json`
 
-**Interfaces:**
-- Produces: `slotStartsForDuration(startISO: string, durationMin: number): string[]` — the 30-min slot-start ISO strings (UTC) covering the duration, count = `neededSlots(durationMin)`.
+**인터페이스:**
+- 제공: `slotStartsForDuration(startISO: string, durationMin: number): string[]` — 소요시간을 채우는 30분 슬롯 시작 ISO(UTC) 목록, 개수 = `neededSlots(durationMin)`.
 
-- [ ] **Step 1: Install Vitest**
+- [ ] **Step 1: Vitest 설치**
 
 ```bash
 npm install -D vitest
 ```
 
-- [ ] **Step 2: Add config and test script**
+- [ ] **Step 2: 설정 파일 + 테스트 스크립트 추가**
 
-Create `vitest.config.ts`:
+`vitest.config.ts` 생성:
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -83,11 +83,11 @@ export default defineConfig({
 });
 ```
 
-Add to `package.json` `"scripts"`: `"test": "vitest run"`.
+`package.json` 의 `"scripts"` 에 추가: `"test": "vitest run"`.
 
-- [ ] **Step 3: Write the failing test**
+- [ ] **Step 3: 실패하는 테스트 작성**
 
-Create `src/lib/scheduling.test.ts`:
+`src/lib/scheduling.test.ts` 생성:
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -116,14 +116,14 @@ describe("slotStartsForDuration", () => {
 });
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [ ] **Step 4: 실패 확인**
 
-Run: `npx vitest run src/lib/scheduling.test.ts`
-Expected: FAIL — `slotStartsForDuration is not a function`.
+실행: `npx vitest run src/lib/scheduling.test.ts`
+기대: FAIL — `slotStartsForDuration is not a function`.
 
-- [ ] **Step 5: Implement the helper**
+- [ ] **Step 5: 헬퍼 구현**
 
-Append to `src/lib/scheduling.ts`:
+`src/lib/scheduling.ts` 끝에 추가:
 
 ```ts
 /** startISO(UTC)부터 durationMin 을 채우는 연속 30분 슬롯 시작 ISO 목록 */
@@ -142,14 +142,14 @@ export function slotStartsForDuration(
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [ ] **Step 6: 통과 확인**
 
-Run: `npx vitest run src/lib/scheduling.test.ts`
-Expected: PASS (3 tests).
+실행: `npx vitest run src/lib/scheduling.test.ts`
+기대: PASS (3 tests).
 
-- [ ] **Step 7: tsc + commit**
+- [ ] **Step 7: tsc + 커밋**
 
-Run: `npx tsc --noEmit` → 0 errors.
+실행: `npx tsc --noEmit` → 에러 0.
 
 ```bash
 git add vitest.config.ts package.json package-lock.json src/lib/scheduling.ts src/lib/scheduling.test.ts
@@ -158,18 +158,18 @@ git commit -m "test: add Vitest + slotStartsForDuration scheduling helper"
 
 ---
 
-### Task 2: `block_group` column (migration + schema + type)
+### Task 2: `block_group` 컬럼 (마이그레이션 + 스키마 + 타입)
 
-**Files:**
-- Create: `supabase/migrations/20260703020000_block_group.sql`
-- Modify: `supabase/schema.sql`, `src/lib/types.ts`
+**파일:**
+- 생성: `supabase/migrations/20260703020000_block_group.sql`
+- 수정: `supabase/schema.sql`, `src/lib/types.ts`
 
-**Interfaces:**
-- Produces: `availability_slots.block_group uuid null`; `AvailabilitySlot.block_group: string | null`.
+**인터페이스:**
+- 제공: `availability_slots.block_group uuid null`; `AvailabilitySlot.block_group: string | null`.
 
-- [ ] **Step 1: Write the migration**
+- [ ] **Step 1: 마이그레이션 작성**
 
-Create `supabase/migrations/20260703020000_block_group.sql`:
+`supabase/migrations/20260703020000_block_group.sql` 생성:
 
 ```sql
 -- 범위 블록(Square식 'block off time') 그룹 식별자.
@@ -181,25 +181,25 @@ create index if not exists availability_slots_block_group_idx
   on public.availability_slots (block_group);
 ```
 
-- [ ] **Step 2: Mirror into schema.sql**
+- [ ] **Step 2: schema.sql 미러링**
 
-In `supabase/schema.sql`, in the `availability_slots` section (near the `generated` column added by the earlier migration), add the same `add column if not exists ... block_group uuid;` and the index, so a fresh `schema.sql` apply matches migrations.
+`supabase/schema.sql` 의 `availability_slots` 섹션(앞선 마이그레이션이 추가한 `generated` 컬럼 근처)에 동일한 `add column if not exists ... block_group uuid;` 와 인덱스를 추가해, 새로 `schema.sql` 을 적용해도 마이그레이션과 일치하게 한다.
 
-- [ ] **Step 3: Add to the type**
+- [ ] **Step 3: 타입에 추가**
 
-In `src/lib/types.ts`, in `interface AvailabilitySlot`, add after `generated: boolean;`:
+`src/lib/types.ts` 의 `interface AvailabilitySlot` 에서 `generated: boolean;` 다음에 추가:
 
 ```ts
   block_group: string | null;
 ```
 
-- [ ] **Step 4: Fix the DEFAULT fallback if needed**
+- [ ] **Step 4: 필요 시 DEFAULT fallback 수정**
 
-`src/lib/data.ts` has no default `AvailabilitySlot`, so nothing else to change. Run `npx tsc --noEmit` and fix any object literal that constructs an `AvailabilitySlot` without `block_group` (add `block_group: null`).
+`src/lib/data.ts` 에는 기본 `AvailabilitySlot` 이 없으므로 그 외 변경 없음. `npx tsc --noEmit` 를 돌려 `AvailabilitySlot` 을 `block_group` 없이 생성하는 객체 리터럴이 있으면 `block_group: null` 을 추가한다.
 
-- [ ] **Step 5: Verify + commit**
+- [ ] **Step 5: 검증 + 커밋**
 
-Run: `npx tsc --noEmit` → 0 errors. `npm run lint` → 0 errors.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
 ```bash
 git add supabase/migrations/20260703020000_block_group.sql supabase/schema.sql src/lib/types.ts src/lib/data.ts
@@ -208,21 +208,21 @@ git commit -m "feat: add availability_slots.block_group for range blocks"
 
 ---
 
-### Task 3: Extract `generateCode` + pure `buildServiceLines`
+### Task 3: `generateCode` 추출 + 순수 `buildServiceLines`
 
-**Files:**
-- Create: `src/lib/code.ts`, `src/lib/code.test.ts`, `src/lib/bookingLines.ts`, `src/lib/bookingLines.test.ts`
-- Modify: `src/app/actions.ts`
+**파일:**
+- 생성: `src/lib/code.ts`, `src/lib/code.test.ts`, `src/lib/bookingLines.ts`, `src/lib/bookingLines.test.ts`
+- 수정: `src/app/actions.ts`
 
-**Interfaces:**
-- Produces:
-  - `generateCode(len?: number): string` — human-unambiguous code (alphabet `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
-  - `buildServiceLines(services: Service[], selections: { service_id: string; quantity: number }[]): BookingServiceLine[]` — DB-price snapshot, qty clamped 1–20, unknown ids dropped.
-- Consumes: `Service`, `BookingServiceLine` from `@/lib/types`.
+**인터페이스:**
+- 제공:
+  - `generateCode(len?: number): string` — 사람이 헷갈리지 않는 코드(알파벳 `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
+  - `buildServiceLines(services: Service[], selections: { service_id: string; quantity: number }[]): BookingServiceLine[]` — DB 가격 스냅샷, 수량 1–20 클램프, 없는 id 는 제외.
+- 소비: `@/lib/types` 의 `Service`, `BookingServiceLine`.
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Step 1: 실패하는 테스트 작성**
 
-Create `src/lib/code.test.ts`:
+`src/lib/code.test.ts` 생성:
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -237,7 +237,7 @@ describe("generateCode", () => {
 });
 ```
 
-Create `src/lib/bookingLines.test.ts`:
+`src/lib/bookingLines.test.ts` 생성:
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -268,16 +268,16 @@ describe("buildServiceLines", () => {
 });
 ```
 
-(If the `Service` interface fields differ, match them exactly — read `src/lib/types.ts` first.)
+(`Service` 인터페이스 필드가 다르면 정확히 맞출 것 — 먼저 `src/lib/types.ts` 를 읽어라.)
 
-- [ ] **Step 2: Run to verify fail**
+- [ ] **Step 2: 실패 확인**
 
-Run: `npx vitest run src/lib/code.test.ts src/lib/bookingLines.test.ts`
-Expected: FAIL — modules not found.
+실행: `npx vitest run src/lib/code.test.ts src/lib/bookingLines.test.ts`
+기대: FAIL — 모듈 없음.
 
-- [ ] **Step 3: Implement `code.ts`**
+- [ ] **Step 3: `code.ts` 구현**
 
-Create `src/lib/code.ts` (moved verbatim from `src/app/actions.ts`):
+`src/lib/code.ts` 생성(`src/app/actions.ts` 에서 그대로 이동):
 
 ```ts
 // 사람이 헷갈리지 않는 문자만 사용 (0/O, 1/I 제외)
@@ -292,9 +292,9 @@ export function generateCode(len = 6): string {
 }
 ```
 
-- [ ] **Step 4: Implement `bookingLines.ts`**
+- [ ] **Step 4: `bookingLines.ts` 구현**
 
-Create `src/lib/bookingLines.ts`:
+`src/lib/bookingLines.ts` 생성:
 
 ```ts
 import type { BookingServiceLine, Service } from "./types";
@@ -325,16 +325,16 @@ export function buildServiceLines(
 }
 ```
 
-- [ ] **Step 5: Rewire `src/app/actions.ts`**
+- [ ] **Step 5: `src/app/actions.ts` 재연결**
 
-Remove the local `CODE_ALPHABET` + `generateCode` (lines ~70–78) and add `import { generateCode } from "@/lib/code";`. Optionally replace the inline snapshot loop in `createBooking` with `buildServiceLines(svcRows ?? [], input.services)` — only if it keeps behavior identical (active-only filter stays in the query). Keep this change minimal to avoid regressions; if unsure, leave `createBooking`'s loop and just share `generateCode`.
+로컬 `CODE_ALPHABET` + `generateCode`(대략 70–78줄)를 제거하고 `import { generateCode } from "@/lib/code";` 추가. 선택적으로 `createBooking` 안의 인라인 스냅샷 루프를 `buildServiceLines(svcRows ?? [], input.services)` 로 교체 — 단 동작이 완전히 동일할 때만(active-only 필터는 쿼리에 유지). 회귀를 피하려 이 변경은 최소로: 애매하면 `createBooking` 루프는 그대로 두고 `generateCode` 만 공유.
 
-- [ ] **Step 6: Verify**
+- [ ] **Step 6: 검증**
 
-Run: `npx vitest run src/lib/code.test.ts src/lib/bookingLines.test.ts` → PASS.
-Run: `npx tsc --noEmit` → 0 errors. `npm run lint` → 0.
+실행: `npx vitest run src/lib/code.test.ts src/lib/bookingLines.test.ts` → PASS.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: 커밋**
 
 ```bash
 git add src/lib/code.ts src/lib/code.test.ts src/lib/bookingLines.ts src/lib/bookingLines.test.ts src/app/actions.ts
@@ -343,20 +343,20 @@ git commit -m "refactor: extract generateCode + buildServiceLines to shared libs
 
 ---
 
-### Task 4: `blockRange` + `removeBlock` actions
+### Task 4: `blockRange` + `removeBlock` 액션
 
-**Files:**
-- Modify: `src/app/admin/actions.ts`
+**파일:**
+- 수정: `src/app/admin/actions.ts`
 
-**Interfaces:**
-- Consumes: `assertAdmin`, `createSupabaseAdminClient`, `revalidatePath`.
-- Produces:
-  - `blockRange(input: { startsAtISOs: string[]; reasonKo?: string; reasonEn?: string }): Promise<ActionResult>` — the client generates the 30-min ISO list (a contiguous range, or a full business day for "all day"). Creates/updates each to `status:'blocked'` sharing one `block_group`. If any target time is already `booked`, aborts with `SLOT_TAKEN` and touches nothing.
-  - `removeBlock(input: { blockGroup: string }): Promise<ActionResult>` — for slots in the group: delete when `generated=false` and not referenced by a booking; else flip to `open`. Never touches `booked`.
+**인터페이스:**
+- 소비: `assertAdmin`, `createSupabaseAdminClient`, `revalidatePath`.
+- 제공:
+  - `blockRange(input: { startsAtISOs: string[]; reasonKo?: string; reasonEn?: string }): Promise<ActionResult>` — 클라이언트가 30분 ISO 목록(연속 범위 또는 '하루종일' 전체 영업일)을 생성. 각각을 하나의 `block_group` 을 공유하는 `status:'blocked'` 로 생성/갱신. 대상 시간이 이미 `booked` 면 `SLOT_TAKEN` 으로 중단하고 아무것도 건드리지 않음.
+  - `removeBlock(input: { blockGroup: string }): Promise<ActionResult>` — 그룹의 슬롯을 삭제. `booked` 는 절대 건드리지 않음.
 
-- [ ] **Step 1: Implement `blockRange`**
+- [ ] **Step 1: `blockRange` 구현**
 
-Add to `src/app/admin/actions.ts`:
+`src/app/admin/actions.ts` 에 추가:
 
 ```ts
 export async function blockRange(input: {
@@ -402,9 +402,9 @@ export async function blockRange(input: {
 }
 ```
 
-Note: `upsert` with `onConflict:"starts_at"` overwrites an existing `open` slot's status to `blocked` and stamps `block_group`. Because booked rows were rejected in step 1, no booked slot is overwritten. (If a race turns a slot booked between the check and the upsert, the confirmed-booking flow's own locking still protects the booking; the block simply shouldn't be created over it — acceptable for admin single-user use.)
+메모: `onConflict:"starts_at"` upsert 는 기존 `open` 슬롯의 status 를 `blocked` 로 덮어쓰고 `block_group` 을 찍는다. booked 행은 step 1 에서 거부되므로 booked 슬롯이 덮이지 않는다. (검사와 upsert 사이에 슬롯이 booked 로 바뀌는 레이스가 나도, 확정 예약 흐름 자체의 잠금이 예약을 보호한다. 블록이 그 위에 안 생기면 그만 — 단일 관리자 사용에서 허용 가능.)
 
-- [ ] **Step 2: Implement `removeBlock`**
+- [ ] **Step 2: `removeBlock` 구현**
 
 ```ts
 export async function removeBlock(input: {
@@ -413,8 +413,7 @@ export async function removeBlock(input: {
   await assertAdmin();
   if (!input.blockGroup) return { ok: false, error: "INVALID" };
   const sb = createSupabaseAdminClient();
-  // 그룹의 blocked 슬롯만 삭제 (generated 여부와 무관하게, 블록은 관리자가 만든 것).
-  // booked 는 애초에 이 그룹에 속하지 않음.
+  // 그룹의 blocked 슬롯만 삭제 (블록은 관리자가 만든 것). booked 는 애초에 이 그룹에 없음.
   const { error } = await sb
     .from("availability_slots")
     .delete()
@@ -427,14 +426,14 @@ export async function removeBlock(input: {
 }
 ```
 
-(Deleting blocked slots is safe: blocked slots hold no booking. This keeps the grid clean; if recurring-hours auto-generation later wants them back it will regenerate.)
+(blocked 슬롯 삭제는 안전: blocked 슬롯은 예약을 보유하지 않음. 격자를 깔끔히 유지. 이후 반복영업시간 자동생성이 다시 필요로 하면 재생성함.)
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 3: 검증**
 
-Run: `npx tsc --noEmit` → 0. `npm run lint` → 0.
-Manual (dev server, after applying the migration to your Supabase): none yet — no UI. Defer manual to Task 9.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
+수동(개발서버, 마이그레이션을 Supabase 에 적용한 뒤): 아직 UI 없음 — 수동은 Task 9 로 미룸.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: 커밋**
 
 ```bash
 git add src/app/admin/actions.ts
@@ -443,27 +442,27 @@ git commit -m "feat: blockRange + removeBlock admin actions"
 
 ---
 
-### Task 5: `createAdminBooking` action
+### Task 5: `createAdminBooking` 액션
 
-**Files:**
-- Modify: `src/app/admin/actions.ts`
+**파일:**
+- 수정: `src/app/admin/actions.ts`
 
-**Interfaces:**
-- Consumes: `generateCode` (`@/lib/code`), `buildServiceLines` (`@/lib/bookingLines`), `slotStartsForDuration` + `bookingDurationMin` (`@/lib/scheduling`).
-- Produces: `createAdminBooking(input: { customer: { id: string } | { name: string; contact: string; email?: string; referral?: string }; services: { service_id: string; quantity: number }[]; startsAtISO: string; note?: string }): Promise<{ ok: true; code: string } | { ok: false; error: string }>` — creates an instantly-`confirmed` booking, no email.
+**인터페이스:**
+- 소비: `generateCode`(`@/lib/code`), `buildServiceLines`(`@/lib/bookingLines`), `slotStartsForDuration` + `bookingDurationMin`(`@/lib/scheduling`).
+- 제공: `createAdminBooking(input: { customer: { id: string } | { name: string; contact: string; email?: string; referral?: string }; services: { service_id: string; quantity: number }[]; startsAtISO: string; note?: string }): Promise<{ ok: true; code: string } | { ok: false; error: string }>` — 즉시 `confirmed` 예약 생성, 이메일 없음.
 
-- [ ] **Step 1: Add imports**
+- [ ] **Step 1: import 추가**
 
-At the top of `src/app/admin/actions.ts` add:
+`src/app/admin/actions.ts` 상단에 추가:
 
 ```ts
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
-import { slotStartsForDuration } from "@/lib/scheduling"; // add to the existing scheduling import
-import type { Service } from "@/lib/types"; // add to existing type import
+import { slotStartsForDuration } from "@/lib/scheduling"; // 기존 scheduling import 에 합치기
+import type { Service } from "@/lib/types"; // 기존 타입 import 에 합치기
 ```
 
-- [ ] **Step 2: Implement the action**
+- [ ] **Step 2: 액션 구현**
 
 ```ts
 export async function createAdminBooking(input: {
@@ -592,13 +591,13 @@ export async function createAdminBooking(input: {
 }
 ```
 
-Note on the `bookings_one_confirmed_per_slot` unique index: it guards `confirmed_slot_id`. Since `confirmedSlotId` was just locked to `booked` from `open`, no other confirmed booking can hold it — the insert is safe. If a 23505 fires on the *booking* insert for the confirmed-slot index (not the code), treat as `SLOT_TAKEN`; the code-collision retry only catches `code`. To be precise, distinguish: on `error.code === "23505"`, retry only if the message references `bookings_code_key`/`code`; otherwise roll back slots and return `SLOT_TAKEN`. Keep the simple version if the message check is brittle — the earlier slot lock makes a confirmed-slot collision practically impossible in single-admin use.
+`bookings_one_confirmed_per_slot` 유니크 인덱스 관련 메모: 이 인덱스는 `confirmed_slot_id` 를 보호한다. `confirmedSlotId` 는 방금 `open` → `booked` 로 잠갔으므로 다른 확정 예약이 이를 보유할 수 없어 insert 가 안전하다. 만약 booking insert 에서 (code 가 아닌) 확정-슬롯 인덱스로 23505 가 나면 `SLOT_TAKEN` 으로 처리하라. 코드-충돌 재시도는 `code` 만 잡는다. 정확히 하려면 `error.code === "23505"` 일 때 메시지가 `bookings_code_key`/`code` 를 가리키면 재시도, 아니면 슬롯 롤백 후 `SLOT_TAKEN` 반환. 메시지 검사가 불안정하면 단순 버전을 유지 — 앞선 슬롯 잠금 덕에 단일 관리자 환경에서 확정-슬롯 충돌은 사실상 불가능하다.
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 3: 검증**
 
-Run: `npx tsc --noEmit` → 0. `npm run lint` → 0.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: 커밋**
 
 ```bash
 git add src/app/admin/actions.ts
@@ -607,19 +606,19 @@ git commit -m "feat: createAdminBooking (instant confirmed, no email)"
 
 ---
 
-### Task 6: Customer admin actions
+### Task 6: 고객 관리자 액션
 
-**Files:**
-- Modify: `src/app/admin/actions.ts`
+**파일:**
+- 수정: `src/app/admin/actions.ts`
 
-**Interfaces:**
-- Produces:
-  - `createCustomer(input: { name: string; contact: string; email?: string; referral?: string; memo?: string }): Promise<{ ok: true; id: string; existed: boolean } | { ok: false; error: string }>` — insert; on duplicate `contact` return the existing id with `existed:true`.
-  - `updateCustomer(input: { customerId: string; name?: string; email?: string; referral?: string; memo?: string }): Promise<ActionResult>` — partial update.
-  - `findCustomerByContact(contact: string): Promise<{ id: string; name: string; contact: string; email: string; referral_source: string } | null>` — for the booking form's phone match.
-- `saveCustomerMemo` stays (used by existing UI) — reimplement it to call the same update path, or leave as-is.
+**인터페이스:**
+- 제공:
+  - `createCustomer(input: { name: string; contact: string; email?: string; referral?: string; memo?: string }): Promise<{ ok: true; id: string; existed: boolean } | { ok: false; error: string }>` — insert; `contact` 중복이면 기존 id 를 `existed:true` 로 반환.
+  - `updateCustomer(input: { customerId: string; name?: string; email?: string; referral?: string; memo?: string }): Promise<ActionResult>` — 부분 갱신.
+  - `findCustomerByContact(contact: string): Promise<{ id: string; name: string; contact: string; email: string; referral_source: string } | null>` — 예약 폼의 전화 매칭용.
+- `saveCustomerMemo` 유지(기존 UI 사용) — 같은 갱신 경로를 호출하게 재구현하거나 그대로 둠.
 
-- [ ] **Step 1: Implement the three actions**
+- [ ] **Step 1: 세 액션 구현**
 
 ```ts
 export async function createCustomer(input: {
@@ -681,13 +680,13 @@ export async function findCustomerByContact(
 }
 ```
 
-- [ ] **Step 2: Point `saveCustomerMemo` at `updateCustomer` (optional DRY)**
+- [ ] **Step 2: `saveCustomerMemo` 를 `updateCustomer` 로 위임(선택, DRY)**
 
-Replace the body of `saveCustomerMemo` with `return updateCustomer({ customerId: input.customerId, memo: input.memo });` — keeps the existing `CustomersManager` call working. (Skip if you prefer zero churn.)
+`saveCustomerMemo` 본문을 `return updateCustomer({ customerId: input.customerId, memo: input.memo });` 로 교체 — 기존 `CustomersManager` 호출을 그대로 유지. (변경 최소화를 원하면 생략 가능.)
 
-- [ ] **Step 3: Verify + commit**
+- [ ] **Step 3: 검증 + 커밋**
 
-Run: `npx tsc --noEmit` → 0. `npm run lint` → 0.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
 ```bash
 git add src/app/admin/actions.ts
@@ -696,17 +695,17 @@ git commit -m "feat: createCustomer / updateCustomer / findCustomerByContact act
 
 ---
 
-### Task 7: Customer CRM UI (register + phone search + new/returning badge)
+### Task 7: 고객 CRM UI (등록 + 전화 검색 + 신규/재방문 배지)
 
-**Files:**
-- Modify: `src/app/admin/customers/page.tsx`, `src/components/admin/CustomersManager.tsx`, `src/lib/i18n.ts`
+**파일:**
+- 수정: `src/app/admin/customers/page.tsx`, `src/components/admin/CustomersManager.tsx`, `src/lib/i18n.ts`
 
-**Interfaces:**
-- Consumes: `createCustomer`, `updateCustomer` (`@/app/admin/actions`). `CustomerRow` gains `isReturning: boolean`.
+**인터페이스:**
+- 소비: `createCustomer`, `updateCustomer`(`@/app/admin/actions`). `CustomerRow` 에 `isReturning: boolean` 추가.
 
-- [ ] **Step 1: Add i18n keys (ko + en)**
+- [ ] **Step 1: i18n 키 추가 (ko + en)**
 
-In `src/lib/i18n.ts`, add to the `admin` object for both locales. Korean:
+`src/lib/i18n.ts` 의 `admin` 객체에 두 로케일 모두 추가. 한국어:
 
 ```ts
     registerCustomer: "고객 등록",
@@ -720,7 +719,7 @@ In `src/lib/i18n.ts`, add to the `admin` object for both locales. Korean:
     duplicateContact: "이미 등록된 연락처예요.",
 ```
 
-English:
+영어:
 
 ```ts
     registerCustomer: "Add customer",
@@ -734,19 +733,19 @@ English:
     duplicateContact: "This contact is already registered.",
 ```
 
-- [ ] **Step 2: Add `isReturning` in the page**
+- [ ] **Step 2: 페이지에 `isReturning` 추가**
 
-In `src/app/admin/customers/page.tsx`, in the `rows` map add `isReturning: completed.length > 0,` to the returned object, and add `isReturning: boolean;` to `CustomerRow` in `CustomersManager.tsx`.
+`src/app/admin/customers/page.tsx` 의 `rows` 매핑에서 반환 객체에 `isReturning: completed.length > 0,` 를 추가하고, `CustomersManager.tsx` 의 `CustomerRow` 에 `isReturning: boolean;` 을 추가한다.
 
-- [ ] **Step 3: Add register form + search to `CustomersManager`**
+- [ ] **Step 3: `CustomersManager` 에 등록 폼 + 검색 추가**
 
-At the top of the `CustomersManager` component (before the empty-state check), add controlled search state and a register form. Concretely:
-- Add `const [q, setQ] = useState("")` and filter `rows` by `r.contact.includes(q) || r.name.includes(q)` (case-insensitive) for display.
-- Add a `RegisterCustomer` sub-component with `name`, `contact`, `email` inputs and a save button calling `createCustomer(...)`; on `{ ok:true, existed:true }` show `dict.admin.duplicateContact`; on success `router.refresh()`.
-- Render a search `<input placeholder={dict.admin.searchByPhone}>` above the list.
-- In `CustomerCard`, next to the name, render a badge: `row.isReturning ? dict.admin.badgeReturning : dict.admin.badgeNew` with distinct colors (e.g. returning `bg-brand-100 text-brand-700`, new `bg-amber-100 text-amber-700`).
+`CustomersManager` 컴포넌트 최상단(빈 상태 체크 전)에 제어형 검색 상태와 등록 폼을 추가. 구체적으로:
+- `const [q, setQ] = useState("")` 를 추가하고 표시용으로 `rows` 를 `r.contact.includes(q) || r.name.includes(q)`(대소문자 무시)로 필터.
+- `name`, `contact`, `email` 입력과 저장 버튼을 가진 `RegisterCustomer` 하위 컴포넌트 추가, `createCustomer(...)` 호출. `{ ok:true, existed:true }` 면 `dict.admin.duplicateContact` 표시; 성공 시 `router.refresh()`.
+- 리스트 위에 `<input placeholder={dict.admin.searchByPhone}>` 검색창 렌더.
+- `CustomerCard` 의 이름 옆에 배지 렌더: `row.isReturning ? dict.admin.badgeReturning : dict.admin.badgeNew`, 색 구분(예: 재방문 `bg-brand-100 text-brand-700`, 신규 `bg-amber-100 text-amber-700`).
 
-Full new form component (add inside `CustomersManager.tsx`):
+새 폼 컴포넌트 전체(`CustomersManager.tsx` 안에 추가):
 
 ```tsx
 function RegisterCustomer({ dict }: { dict: Dict }) {
@@ -789,14 +788,14 @@ function RegisterCustomer({ dict }: { dict: Dict }) {
 }
 ```
 
-Import `createCustomer` from `@/app/admin/actions`. Render `<RegisterCustomer dict={dict} />` and the search input above the list; move the empty-state so it only affects the list area (register + search stay visible when there are 0 customers).
+`createCustomer` 를 `@/app/admin/actions` 에서 import. `<RegisterCustomer dict={dict} />` 와 검색창을 리스트 위에 렌더하고, 빈 상태는 리스트 영역에만 영향을 주도록 이동(고객 0명이어도 등록+검색은 보이게).
 
-- [ ] **Step 4: Verify (manual)**
+- [ ] **Step 4: 검증 (수동)**
 
-Run `npm run dev`. At `/admin/customers`: register a customer (name+phone) → appears in the list with a **New** badge; a customer with completed bookings shows **Returning**; typing a phone fragment filters the list; registering an existing contact shows the duplicate message.
-Run: `npx tsc --noEmit` → 0. `npm run lint` → 0.
+`npm run dev` 실행. `/admin/customers` 에서: 고객 등록(이름+전화) → **신규** 배지로 리스트에 등장; 완료 예약이 있는 고객은 **재방문** 표시; 전화 일부 입력 시 리스트 필터; 이미 있는 연락처 등록 시 중복 메시지.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 git add src/app/admin/customers/page.tsx src/components/admin/CustomersManager.tsx src/lib/i18n.ts
@@ -805,17 +804,17 @@ git commit -m "feat: customer register, phone search, new/returning badge"
 
 ---
 
-## Phase 2 — Unified calendar UI
+## Phase 2 — 통합 캘린더 UI
 
-### Task 8: Calendar data plumbing (blocks + services + customers)
+### Task 8: 캘린더 데이터 연결 (블록 + 시술 + 고객)
 
-**Files:**
-- Modify: `src/lib/data.ts`, `src/app/admin/calendar/page.tsx`
+**파일:**
+- 수정: `src/lib/data.ts`, `src/app/admin/calendar/page.tsx`
 
-**Interfaces:**
-- Produces: `getBlocks(): Promise<{ block_group: string; starts_at: string; note_ko: string; note_en: string }[]>` — all `status='blocked'` slots that have a `block_group`, ordered by `starts_at`. The calendar page passes `blocks`, active `services`, and lightweight `customers` (id/name/contact) to `BookingCalendar`.
+**인터페이스:**
+- 제공: `getBlocks(): Promise<{ block_group: string; starts_at: string; note_ko: string; note_en: string }[]>` — `block_group` 이 있는 모든 `status='blocked'` 슬롯, `starts_at` 정렬. 캘린더 페이지가 `blocks`, 활성 `services`, 경량 `customers`(id/name/contact)를 `BookingCalendar` 에 전달.
 
-- [ ] **Step 1: Add `getBlocks` to `data.ts`**
+- [ ] **Step 1: `data.ts` 에 `getBlocks` 추가**
 
 ```ts
 export async function getBlocks(): Promise<
@@ -833,13 +832,13 @@ export async function getBlocks(): Promise<
 }
 ```
 
-- [ ] **Step 2: Feed the calendar page**
+- [ ] **Step 2: 캘린더 페이지에 공급**
 
-In `src/app/admin/calendar/page.tsx`, extend the `Promise.all` to also fetch `getBlocks()`, `getAllServices()` (active filter can be done inline or add `getActiveServices()`), and `getCustomers()`. Pass new props to `BookingCalendar`: `blocks`, `services` (active only), `customers` (map to `{ id, name, contact }`). Import from `@/lib/data`.
+`src/app/admin/calendar/page.tsx` 의 `Promise.all` 에 `getBlocks()`, `getAllServices()`(활성 필터는 인라인 또는 `getActiveServices()` 추가), `getCustomers()` 를 추가. `BookingCalendar` 에 새 props 전달: `blocks`, `services`(활성만), `customers`(`{ id, name, contact }` 로 매핑). `@/lib/data` 에서 import.
 
-- [ ] **Step 3: Verify + commit**
+- [ ] **Step 3: 검증 + 커밋**
 
-Run: `npx tsc --noEmit` (will error until `BookingCalendar` accepts the new props — proceed to Task 9 in the same branch, or make the props optional now). To keep this task independently green, add the new props as **optional** in `BookingCalendar`'s prop type in this task (typed but unused), so tsc passes.
+실행: `npx tsc --noEmit`(`BookingCalendar` 가 새 props 를 받기 전까지 에러 — 같은 브랜치에서 Task 9 로 이어가거나, 지금 props 를 optional 로). 이 태스크를 독립적으로 통과시키려면 이번 태스크에서 `BookingCalendar` prop 타입에 새 props 를 **optional**(타입만, 미사용)으로 추가해 tsc 를 통과시켜라.
 
 ```bash
 git add src/lib/data.ts src/app/admin/calendar/page.tsx src/components/admin/BookingCalendar.tsx
@@ -848,22 +847,22 @@ git commit -m "feat: fetch blocks/services/customers for admin calendar"
 
 ---
 
-### Task 9: Block rendering + block form on the calendar day panel
+### Task 9: 캘린더 날짜 패널의 블록 렌더링 + 블록 폼
 
-**Files:**
-- Create: `src/components/admin/BlockForm.tsx`
-- Modify: `src/components/admin/BookingCalendar.tsx`, `src/lib/i18n.ts`
+**파일:**
+- 생성: `src/components/admin/BlockForm.tsx`
+- 수정: `src/components/admin/BookingCalendar.tsx`, `src/lib/i18n.ts`
 
-**Interfaces:**
-- Consumes: `blockRange`, `removeBlock` (`@/app/admin/actions`); `blocks` prop (Task 8).
+**인터페이스:**
+- 소비: `blockRange`, `removeBlock`(`@/app/admin/actions`); `blocks` prop(Task 8).
 
-- [ ] **Step 1: i18n keys**
+- [ ] **Step 1: i18n 키**
 
-Add to `admin` (ko / en): `addBlock: "블록 추가" / "Block time"`, `blockReason: "사유(선택)" / "Reason (optional)"`, `allDay: "하루 종일" / "All day"`, `from: "시작" / "From"`, `to: "종료" / "To"`, `removeBlock: "블록 해제" / "Remove block"`, `blockConflict: "이미 예약이 있는 시간이에요." / "That time already has a booking."`, `blocked: "블록" / "Blocked"`.
+`admin` 에 추가(ko / en): `addBlock: "블록 추가" / "Block time"`, `blockReason: "사유(선택)" / "Reason (optional)"`, `allDay: "하루 종일" / "All day"`, `from: "시작" / "From"`, `to: "종료" / "To"`, `removeBlock: "블록 해제" / "Remove block"`, `blockConflict: "이미 예약이 있는 시간이에요." / "That time already has a booking."`, `blocked: "블록" / "Blocked"`.
 
-- [ ] **Step 2: Build `BlockForm.tsx`**
+- [ ] **Step 2: `BlockForm.tsx` 작성**
 
-A client component that, given `dayKey` (YYYY-MM-DD) and locale, lets the admin pick start/end time (30-min `<select>`s, e.g. 08:00–21:00) or "all day", plus an optional reason, and calls `blockRange`. It builds the ISO list **client-side** from the local day + minute (matching `AvailabilityManager`'s existing 30-min generation), so timezone handling is consistent:
+`dayKey`(YYYY-MM-DD)와 locale 을 받아, 시작/종료 시간(30분 `<select>`, 예: 08:00–21:00) 또는 "하루종일" 과 선택 사유를 고르고 `blockRange` 를 호출하는 클라이언트 컴포넌트. ISO 목록은 로컬 day+minute 로 **클라이언트에서** 생성(기존 `AvailabilityManager` 의 30분 생성과 동일)해 시간대 처리를 일관되게 한다:
 
 ```tsx
 "use client";
@@ -872,7 +871,7 @@ import { useRouter } from "next/navigation";
 import type { Dict } from "@/lib/i18n";
 import { blockRange } from "@/app/admin/actions";
 
-// dayKey: "YYYY-MM-DD"; builds local Date → ISO for each 30-min start in [startMin, endMin)
+// dayKey: "YYYY-MM-DD"; [startMin, endMin) 각 30분 시작의 로컬 Date → ISO
 function isosFor(dayKey: string, startMin: number, endMin: number): string[] {
   const [y, m, d] = dayKey.split("-").map(Number);
   const out: string[] = [];
@@ -938,20 +937,20 @@ export function BlockForm({ dayKey, dict, onDone }: { dayKey: string; dict: Dict
 }
 ```
 
-- [ ] **Step 3: Render blocks + entry points in `BookingCalendar`**
+- [ ] **Step 3: `BookingCalendar` 에 블록 + 진입점 렌더**
 
-In `BookingCalendar.tsx`:
-- Accept `blocks` prop; build `blocksByDay: Map<dayKey, {block_group, iso, note}[]>` using `slotDayKey`.
-- In the month grid, add a small gray dot when `blocksByDay.has(key)` (distinct from status dots).
-- In the selected-day panel, above the bookings list, render any blocks for `selected` with their time + reason and a **Remove block** button calling `removeBlock({ blockGroup })` then `router.refresh()` (add `useRouter`). Group consecutive slots of the same `block_group` into one row (min–max time).
-- Add two buttons under the day heading: **➕ New booking** (Task 10) and **⛔ Block** that toggles `<BlockForm dayKey={selected} .../>`.
+`BookingCalendar.tsx` 에서:
+- `blocks` prop 을 받아 `slotDayKey` 로 `blocksByDay: Map<dayKey, {block_group, iso, note}[]>` 구성.
+- 월 그리드에서 `blocksByDay.has(key)` 이면 작은 회색 점 추가(상태 점과 구분).
+- 선택 날짜 패널에서 예약 리스트 위에 `selected` 의 블록들을 시간 + 사유와 함께 렌더하고, `removeBlock({ blockGroup })` 후 `router.refresh()` 하는 **블록 해제** 버튼 추가(`useRouter` 추가). 같은 `block_group` 의 연속 슬롯을 한 줄(최소–최대 시간)로 묶음.
+- 날짜 헤딩 아래 두 버튼 추가: **➕ 새 예약**(Task 10)과 `<BlockForm dayKey={selected} .../>` 를 토글하는 **⛔ 블록**.
 
-- [ ] **Step 4: Verify (manual)**
+- [ ] **Step 4: 검증 (수동)**
 
-`npm run dev` → `/admin/calendar`: pick a day, add a 2-hour block with a reason → block row shows on the day and a gray dot on the month cell; those 30-min times disappear from the public booking wizard (`/`). Remove block → gone. Blocking a time that overlaps a confirmed booking → shows the conflict message.
+`npm run dev` → `/admin/calendar`: 날짜 선택, 사유와 함께 2시간 블록 추가 → 그날에 블록 줄이 뜨고 월 셀에 회색 점; 해당 30분 시간들이 공개 예약 위저드(`/`)에서 사라짐. 블록 해제 → 사라짐. 확정 예약과 겹치는 시간을 블록하면 충돌 메시지.
 `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 git add src/components/admin/BlockForm.tsx src/components/admin/BookingCalendar.tsx src/lib/i18n.ts
@@ -960,45 +959,45 @@ git commit -m "feat: range block create/remove on admin calendar"
 
 ---
 
-### Task 10: New-booking form on the calendar (with customer picker)
+### Task 10: 캘린더의 새 예약 폼 (고객 선택기 포함)
 
-**Files:**
-- Create: `src/components/admin/CustomerPicker.tsx`, `src/components/admin/NewBookingForm.tsx`
-- Modify: `src/components/admin/BookingCalendar.tsx`, `src/lib/i18n.ts`
+**파일:**
+- 생성: `src/components/admin/CustomerPicker.tsx`, `src/components/admin/NewBookingForm.tsx`
+- 수정: `src/components/admin/BookingCalendar.tsx`, `src/lib/i18n.ts`
 
-**Interfaces:**
-- Consumes: `createAdminBooking`, `findCustomerByContact` (`@/app/admin/actions`); `services`, `customers` props (Task 8).
-- `CustomerPicker` produces a value: `{ id: string } | { name: string; contact: string; email?: string }`.
+**인터페이스:**
+- 소비: `createAdminBooking`, `findCustomerByContact`(`@/app/admin/actions`); `services`, `customers` props(Task 8).
+- `CustomerPicker` 가 값을 제공: `{ id: string } | { name: string; contact: string; email?: string }`.
 
-- [ ] **Step 1: i18n keys**
+- [ ] **Step 1: i18n 키**
 
-Add to `admin` (ko / en): `newBooking: "새 예약" / "New booking"`, `pickCustomer: "고객 선택" / "Choose customer"`, `orNewCustomer: "새 고객" / "New customer"`, `pickServices: "시술 선택" / "Services"`, `pickTime: "시간" / "Time"`, `createBooking: "예약 생성" / "Create booking"`, `bookingCreated: "예약이 생성됐어요." / "Booking created."`, `timeTaken: "그 시간은 이미 예약이 있어요." / "That time is already booked."`.
+`admin` 에 추가(ko / en): `newBooking: "새 예약" / "New booking"`, `pickCustomer: "고객 선택" / "Choose customer"`, `orNewCustomer: "새 고객" / "New customer"`, `pickServices: "시술 선택" / "Services"`, `pickTime: "시간" / "Time"`, `createBooking: "예약 생성" / "Create booking"`, `bookingCreated: "예약이 생성됐어요." / "Booking created."`, `timeTaken: "그 시간은 이미 예약이 있어요." / "That time is already booked."`.
 
-- [ ] **Step 2: Build `CustomerPicker.tsx`**
+- [ ] **Step 2: `CustomerPicker.tsx` 작성**
 
-Client component with two modes: **existing** (a phone/name search input that calls `findCustomerByContact` on blur or filters the passed `customers` list) and **new** (name + contact + email inputs). It calls an `onChange(value)` prop with the current selection. Props: `{ customers: { id: string; name: string; contact: string }[]; dict: Dict; onChange: (v: { id: string } | { name: string; contact: string; email?: string } | null) => void }`. Keep it simple: a toggle between "기존 고객" (select/search from `customers`) and "새 고객" (three inputs). On existing selection emit `{ id }`; on new, emit `{ name, contact, email }` when both name+contact are non-empty, else `null`.
+두 모드를 가진 클라이언트 컴포넌트: **기존**(`findCustomerByContact` 를 blur 에 호출하거나 전달된 `customers` 리스트를 필터하는 전화/이름 검색 입력)과 **신규**(이름 + 연락처 + 이메일 입력). 현재 선택을 `onChange(value)` prop 으로 호출. Props: `{ customers: { id: string; name: string; contact: string }[]; dict: Dict; onChange: (v: { id: string } | { name: string; contact: string; email?: string } | null) => void }`. 단순하게: "기존 고객"(`customers` 에서 선택/검색)과 "새 고객"(입력 3개) 토글. 기존 선택 시 `{ id }` 방출, 신규는 이름+연락처가 모두 있으면 `{ name, contact, email }`, 아니면 `null` 방출.
 
-- [ ] **Step 3: Build `NewBookingForm.tsx`**
+- [ ] **Step 3: `NewBookingForm.tsx` 작성**
 
-Client component. Props: `{ dayKey: string; services: Service[]; customers: {id;name;contact}[]; dict: Dict; locale: Locale; onDone: () => void }`. Contains:
-- `<CustomerPicker>` → holds `customer` value.
-- Service multi-select with quantity steppers (reuse the wizard's shape: an array of `{ service_id, quantity }`; show name + `formatServicePrice`). Compute total duration from selected services' `duration_min` for display.
-- A time `<select>` of 30-min starts for `dayKey` (08:00–21:00) built the same way as `BlockForm.isosFor` (one ISO per option value).
-- Optional note input.
-- Submit → `createAdminBooking({ customer, services, startsAtISO, note })`. On `{ ok:false, error:"SLOT_TAKEN" }` show `dict.admin.timeTaken`; on success show `dict.admin.bookingCreated`, call `onDone()`, `router.refresh()`.
+클라이언트 컴포넌트. Props: `{ dayKey: string; services: Service[]; customers: {id;name;contact}[]; dict: Dict; locale: Locale; onDone: () => void }`. 포함:
+- `<CustomerPicker>` → `customer` 값 보유.
+- 수량 스테퍼가 있는 시술 다중선택(위저드 형태 재사용: `{ service_id, quantity }` 배열; 이름 + `formatServicePrice` 표시). 선택된 시술의 `duration_min` 으로 총 소요시간 표시.
+- `dayKey` 의 30분 시작 `<select>`(08:00–21:00), `BlockForm.isosFor` 와 같은 방식으로 생성(옵션 value 당 ISO 하나).
+- 선택 메모 입력.
+- 제출 → `createAdminBooking({ customer, services, startsAtISO, note })`. `{ ok:false, error:"SLOT_TAKEN" }` 이면 `dict.admin.timeTaken` 표시; 성공 시 `dict.admin.bookingCreated` 표시, `onDone()` 호출, `router.refresh()`.
 
-Guard submit disabled until `customer` is non-null, ≥1 service selected, and a time chosen.
+`customer` 가 non-null, 시술 ≥1, 시간 선택 전까지 제출 disabled.
 
-- [ ] **Step 4: Wire into `BookingCalendar`**
+- [ ] **Step 4: `BookingCalendar` 에 연결**
 
-Add a **➕ New booking** button on the selected-day panel that toggles `<NewBookingForm dayKey={selected} services={services} customers={customers} .../>`. Pass `services`/`customers` down from props (make them required now; page already provides them from Task 8).
+선택 날짜 패널에 `<NewBookingForm dayKey={selected} services={services} customers={customers} .../>` 를 토글하는 **➕ 새 예약** 버튼 추가. props 에서 `services`/`customers` 를 내려줌(Task 8 에서 페이지가 이미 제공하므로 이제 required 로).
 
-- [ ] **Step 5: Verify (manual)**
+- [ ] **Step 5: 검증 (수동)**
 
-`npm run dev` → `/admin/calendar`: pick a day → New booking → choose an existing customer (or enter a new one), pick One Color (90min) + time 2:00 PM → Create. The booking appears as **confirmed** on that day (green dot), the three 30-min slots become booked (gone from public wizard), the customer shows in `/admin/customers` (new one created). No email is sent. Creating over an already-booked time shows the conflict message. A brand-new customer's booking then shows **New** badge until completed.
+`npm run dev` → `/admin/calendar`: 날짜 선택 → 새 예약 → 기존 고객 선택(또는 신규 입력), 원컬러(90분) + 시간 오후 2:00 → 생성. 예약이 그날 **confirmed** 로 등장(초록 점), 3개 30분 슬롯이 booked(공개 위저드에서 사라짐), 고객이 `/admin/customers` 에 표시(신규는 새로 생성). 이메일 미발송. 이미 booked 인 시간에 생성 시 충돌 메시지. 신규 고객 예약은 완료 전까지 **신규** 배지.
 `npx tsc --noEmit` → 0. `npm run lint` → 0.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: 커밋**
 
 ```bash
 git add src/components/admin/CustomerPicker.tsx src/components/admin/NewBookingForm.tsx src/components/admin/BookingCalendar.tsx src/lib/i18n.ts
@@ -1007,25 +1006,25 @@ git commit -m "feat: admin new-booking form on calendar (instant confirmed)"
 
 ---
 
-### Task 11: Full-flow verification pass
+### Task 11: 전체 흐름 검증 패스
 
-**Files:** none (verification + any fixes surfaced).
+**파일:** 없음(검증 + 발견된 수정).
 
-- [ ] **Step 1: Regression tests**
+- [ ] **Step 1: 회귀 테스트**
 
-Run: `npx vitest run` → all pure-helper tests PASS.
-Run: `npx tsc --noEmit` → 0. `npm run lint` → 0. `npm run build` → succeeds.
+실행: `npx vitest run` → 순수 헬퍼 테스트 전부 PASS.
+실행: `npx tsc --noEmit` → 0. `npm run lint` → 0. `npm run build` → 성공.
 
-- [ ] **Step 2: End-to-end manual script (dev server)**
+- [ ] **Step 2: 엔드투엔드 수동 시나리오 (개발서버)**
 
-1. Block tomorrow 12:00–14:00 with reason "점심" → verify public wizard can't pick those times.
-2. Admin-create a booking tomorrow 15:00 for a NEW customer (One Color) → confirmed; customer created with **New** badge.
-3. Complete that booking (existing complete flow) → customer flips to **Returning**, revenue updates.
-4. Try to admin-book the same 15:00 slot again → `timeTaken` message.
-5. Remove the lunch block → times reappear in public wizard.
-6. Confirm no customer emails were sent for the admin booking (check logs / Resend dashboard).
+1. 내일 12:00–14:00 을 사유 "점심" 으로 블록 → 공개 위저드에서 그 시간들 선택 불가 확인.
+2. 내일 15:00 에 NEW 고객(원컬러)으로 관리자 예약 생성 → confirmed; **신규** 배지 고객 생성.
+3. 그 예약을 완료(기존 완료 흐름) → 고객이 **재방문** 으로 바뀌고 매출 갱신.
+4. 같은 15:00 슬롯을 다시 관리자 예약 시도 → `timeTaken` 메시지.
+5. 점심 블록 해제 → 공개 위저드에 시간 재등장.
+6. 관리자 예약에 대해 고객 이메일이 발송되지 않았는지 확인(로그 / Resend 대시보드).
 
-- [ ] **Step 3: Commit any fixes**
+- [ ] **Step 3: 발견된 수정 커밋**
 
 ```bash
 git add -A
@@ -1034,9 +1033,9 @@ git commit -m "fix: address issues found in full-flow verification"
 
 ---
 
-## Self-Review Notes
+## 자체 검토 메모 (Self-Review Notes)
 
-- **Spec coverage:** range block + reason (Tasks 2,4,9) ✓; admin booking instant-confirmed, no email, rules ignored, overlap-only guard (Task 5,10) ✓; customer register/lookup by phone + new/returning auto (Tasks 6,7) ✓; unified calendar surface via evolving `BookingCalendar` (Tasks 8–10) ✓; `block_group` forward-compatible with recurring hours ✓.
-- **No test framework existed** — added Vitest for pure logic only; DB/UI verified via tsc/lint/manual, matching repo reality.
-- **Type consistency:** action names/signatures declared in Interfaces blocks and reused verbatim by later UI tasks (`createAdminBooking`, `blockRange`, `removeBlock`, `createCustomer`, `updateCustomer`, `findCustomerByContact`, `getBlocks`, `slotStartsForDuration`, `buildServiceLines`, `generateCode`).
-- **Out of scope (next spec):** recurring business hours → auto slot generation.
+- **스펙 커버리지:** 범위 블록 + 사유(Task 2,4,9) ✓; 관리자 예약 즉시확정·이메일없음·규칙무시·겹침만가드(Task 5,10) ✓; 전화 기반 고객 등록/조회 + 신규/재방문 자동(Task 6,7) ✓; `BookingCalendar` 진화로 통합 캘린더(Task 8–10) ✓; `block_group` 은 반복영업시간과 호환 ✓.
+- **테스트 프레임워크 부재** — 순수 로직만 Vitest 로 추가; DB/UI 는 tsc/lint/수동으로 검증(repo 현실 반영).
+- **타입 일관성:** 액션명/시그니처를 인터페이스 블록에 선언하고 이후 UI 태스크가 그대로 재사용(`createAdminBooking`, `blockRange`, `removeBlock`, `createCustomer`, `updateCustomer`, `findCustomerByContact`, `getBlocks`, `slotStartsForDuration`, `buildServiceLines`, `generateCode`).
+- **범위 밖(다음 스펙):** 반복 영업시간 → 슬롯 자동 생성.
