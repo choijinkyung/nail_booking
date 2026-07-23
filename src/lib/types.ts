@@ -27,6 +27,7 @@ export interface AvailabilitySlot {
   note_ko: string;
   note_en: string;
   generated: boolean;
+  block_group: string | null;
   created_at: string;
 }
 

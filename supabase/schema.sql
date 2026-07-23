@@ -197,6 +197,10 @@ create table if not exists public.schedule_days_off (
 );
 alter table public.availability_slots
   add column if not exists generated boolean not null default false;
+alter table public.availability_slots
+  add column if not exists block_group uuid;
+create index if not exists availability_slots_block_group_idx
+  on public.availability_slots (block_group);
 alter table public.settings
   add column if not exists booking_window_days int not null default 14;
 
