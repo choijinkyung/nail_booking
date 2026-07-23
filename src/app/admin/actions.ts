@@ -549,6 +549,66 @@ export async function deleteSlot(input: {
   return { ok: true };
 }
 
+export async function blockRange(input: {
+  startsAtISOs: string[];
+  reasonKo?: string;
+  reasonEn?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const isos = [...new Set((input.startsAtISOs ?? []).filter(Boolean))];
+  if (isos.length === 0) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+
+  // 1) 대상 시간대에 이미 booked 슬롯이 있으면 전체 거부
+  const { data: existing } = await sb
+    .from("availability_slots")
+    .select("starts_at, status")
+    .in("starts_at", isos);
+  const booked = (existing as { starts_at: string; status: string }[] | null)
+    ?.filter((s) => s.status === "booked");
+  if (booked && booked.length > 0) {
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+
+  // 2) 블록 그룹으로 upsert (open/신규 → blocked). booked 는 위에서 걸러짐.
+  const group = crypto.randomUUID();
+  const note_ko = (input.reasonKo ?? "").trim();
+  const note_en = (input.reasonEn ?? "").trim();
+  const { error } = await sb.from("availability_slots").upsert(
+    isos.map((iso) => ({
+      starts_at: iso,
+      status: "blocked",
+      block_group: group,
+      note_ko,
+      note_en,
+    })),
+    { onConflict: "starts_at" },
+  );
+  if (error) return { ok: false, error: "DB" };
+
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  return { ok: true };
+}
+
+export async function removeBlock(input: {
+  blockGroup: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.blockGroup) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  // 그룹의 blocked 슬롯만 삭제 (블록은 관리자가 만든 것). booked 는 애초에 이 그룹에 없음.
+  const { error } = await sb
+    .from("availability_slots")
+    .delete()
+    .eq("block_group", input.blockGroup)
+    .eq("status", "blocked");
+  if (error) return { ok: false, error: "DB" };
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  return { ok: true };
+}
+
 // ── 가격/시술 관리 ───────────────────────────────────────────
 
 export async function saveService(input: {
