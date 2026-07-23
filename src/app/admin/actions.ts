@@ -559,22 +559,28 @@ export async function blockRange(input: {
   if (isos.length === 0) return { ok: false, error: "INVALID" };
   const sb = createSupabaseAdminClient();
 
-  // 1) 대상 시간대에 이미 booked 슬롯이 있으면 전체 거부
-  const { data: existing } = await sb
+  // 1) 사전 조회: 대상 시간대에 이미 booked 슬롯이 있으면 전체 거부.
+  //    조회 자체가 실패하면(네트워크 등) booked 여부를 알 수 없으므로 안전하게 중단한다
+  //    (fail closed) — 이 결과만으로 최종 판단하지 않고, 아래 쓰기 단계에서 다시 한번
+  //    booked 를 배제해 조회~쓰기 사이의 경쟁 상태(동시 예약 확정)로부터도 보호한다.
+  const { data: existing, error: selErr } = await sb
     .from("availability_slots")
     .select("starts_at, status")
     .in("starts_at", isos);
+  if (selErr) return { ok: false, error: "DB" };
   const booked = (existing as { starts_at: string; status: string }[] | null)
     ?.filter((s) => s.status === "booked");
   if (booked && booked.length > 0) {
     return { ok: false, error: "SLOT_TAKEN" };
   }
 
-  // 2) 블록 그룹으로 upsert (open/신규 → blocked). booked 는 위에서 걸러짐.
   const group = crypto.randomUUID();
   const note_ko = (input.reasonKo ?? "").trim();
   const note_en = (input.reasonEn ?? "").trim();
-  const { error } = await sb.from("availability_slots").upsert(
+
+  // 2) 아직 없는 시각만 새로 생성한다. ignoreDuplicates 이므로 기존 행(특히 방금
+  //    booked 로 바뀐 행)은 이 문장으로는 절대 건드리지 않는다.
+  const { error: insErr } = await sb.from("availability_slots").upsert(
     isos.map((iso) => ({
       starts_at: iso,
       status: "blocked",
@@ -582,9 +588,39 @@ export async function blockRange(input: {
       note_ko,
       note_en,
     })),
-    { onConflict: "starts_at" },
+    { onConflict: "starts_at", ignoreDuplicates: true },
   );
-  if (error) return { ok: false, error: "DB" };
+  if (insErr) return { ok: false, error: "DB" };
+
+  // 3) 기존 행만 blocked 로 갱신하되, 같은 문장에서 booked 를 제외한다(neq).
+  //    사전 조회 이후 다른 요청이 이 슬롯을 예약 확정(open→booked)했더라도
+  //    이 UPDATE 는 그 행을 대상에서 빼므로 확정된 예약을 절대 덮어쓰지 않는다.
+  const { error: updErr } = await sb
+    .from("availability_slots")
+    .update({ status: "blocked", block_group: group, note_ko, note_en })
+    .in("starts_at", isos)
+    .neq("status", "booked")
+    .select("id");
+  if (updErr) return { ok: false, error: "DB" };
+
+  // 4) 결과 검증: 이 block_group 으로 실제 blocked 된 행 수가 요청 범위 전체와
+  //    같아야 한다. 부족하면 2)~3) 사이 경쟁으로 일부 슬롯이 booked 로 바뀌어
+  //    누락된 것 — 방금 이 그룹으로 만든 blocked 행만 되돌리고 실패를 반환한다.
+  //    (booked 로 확정된 행은 애초에 이 그룹에 속하지 않으므로 삭제 대상이 아니다.)
+  const { data: finalRows, error: cntErr } = await sb
+    .from("availability_slots")
+    .select("id")
+    .eq("block_group", group)
+    .eq("status", "blocked");
+  if (cntErr) return { ok: false, error: "DB" };
+  if ((finalRows?.length ?? 0) !== isos.length) {
+    await sb
+      .from("availability_slots")
+      .delete()
+      .eq("block_group", group)
+      .eq("status", "blocked");
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
 
   revalidatePath("/admin/calendar");
   revalidatePath("/admin/availability");
