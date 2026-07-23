@@ -16,13 +16,17 @@ import { getLocale } from "@/lib/locale";
 import {
   bookingDurationMin,
   fitFrom,
+  slotStartsForDuration,
   sortSlots,
 } from "@/lib/scheduling";
 import type {
   AvailabilitySlot,
   Booking,
   BookingServiceLine,
+  Service,
 } from "@/lib/types";
+import { generateCode } from "@/lib/code";
+import { buildServiceLines } from "@/lib/bookingLines";
 
 // ── 인증 ─────────────────────────────────────────────────────
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -179,6 +183,136 @@ export async function confirmBooking(input: {
   revalidatePath("/admin/availability");
   revalidatePath("/admin/calendar");
   return { ok: true };
+}
+
+/**
+ * 관리자가 직접 예약을 등록 (워크인/전화). 즉시 confirmed, 이메일 없음.
+ * 손님용 canBook 의 60분 최소 간격 규칙은 무시하며, 오직 이미 booked 된
+ * 슬롯과의 충돌만 막는다.
+ */
+export async function createAdminBooking(input: {
+  customer:
+    | { id: string }
+    | { name: string; contact: string; email?: string; referral?: string };
+  services: { service_id: string; quantity: number }[];
+  startsAtISO: string;
+  note?: string;
+}): Promise<{ ok: true; code: string } | { ok: false; error: string }> {
+  await assertAdmin();
+  if (!input.startsAtISO) return { ok: false, error: "INVALID" };
+  if (!input.services || input.services.length === 0)
+    return { ok: false, error: "NO_SERVICE" };
+  const sb = createSupabaseAdminClient();
+
+  // 1) 시술 스냅샷 (DB 가격 기준)
+  const serviceIds = [...new Set(input.services.map((s) => s.service_id))];
+  const { data: svcRows } = await sb
+    .from("services")
+    .select("*")
+    .in("id", serviceIds)
+    .eq("active", true);
+  const lines = buildServiceLines((svcRows as Service[]) ?? [], input.services);
+  if (lines.length === 0) return { ok: false, error: "NO_SERVICE" };
+  const estimatedTotal = lines.reduce((s, l) => s + l.subtotal, 0);
+  const duration = bookingDurationMin(lines);
+
+  // 2) 고객 확정 (기존 id 또는 연락처 upsert)
+  let customerId: string | null = null;
+  let name = "";
+  let contact = "";
+  let email = "";
+  let referral = "";
+  if ("id" in input.customer) {
+    const { data: c } = await sb
+      .from("customers")
+      .select("id, name, contact, email, referral_source")
+      .eq("id", input.customer.id)
+      .maybeSingle();
+    if (!c) return { ok: false, error: "NO_CUSTOMER" };
+    const cc = c as { id: string; name: string; contact: string; email: string; referral_source: string };
+    customerId = cc.id; name = cc.name; contact = cc.contact; email = cc.email; referral = cc.referral_source;
+  } else {
+    name = (input.customer.name ?? "").trim();
+    contact = (input.customer.contact ?? "").trim();
+    email = (input.customer.email ?? "").trim();
+    referral = (input.customer.referral ?? "").trim();
+    if (!name || !contact) return { ok: false, error: "INVALID" };
+    const { data: existing } = await sb
+      .from("customers").select("id").eq("contact", contact).maybeSingle();
+    if (existing) {
+      customerId = (existing as { id: string }).id;
+      await sb.from("customers").update({ name, email }).eq("id", customerId);
+    } else {
+      const { data: created } = await sb
+        .from("customers")
+        .insert({ contact, name, email, referral_source: referral })
+        .select("id").single();
+      customerId = (created as { id: string } | null)?.id ?? null;
+    }
+  }
+
+  // 3) 소요시간만큼 연속 30분 슬롯 확보 (없으면 생성). 규칙 무시, booked 와만 충돌 금지.
+  const occIsos = slotStartsForDuration(input.startsAtISO, duration);
+  // 없는 슬롯은 open 으로 생성 (이미 있으면 무시)
+  const { error: seedErr } = await sb.from("availability_slots").upsert(
+    occIsos.map((iso) => ({ starts_at: iso, status: "open" })),
+    { onConflict: "starts_at", ignoreDuplicates: true },
+  );
+  if (seedErr) return { ok: false, error: "DB" };
+  // 원자적 잠금: open 인 것만 booked 로. 하나라도 booked/blocked 면 개수 부족 → 충돌.
+  const { data: locked } = await sb
+    .from("availability_slots")
+    .update({ status: "booked" })
+    .in("starts_at", occIsos)
+    .eq("status", "open")
+    .select("id, starts_at");
+  const lockedRows = (locked as { id: string; starts_at: string }[] | null) ?? [];
+  if (lockedRows.length !== occIsos.length) {
+    // 롤백
+    await sb.from("availability_slots").update({ status: "open" })
+      .in("id", lockedRows.map((r) => r.id));
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+  const sortedLocked = [...lockedRows].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const confirmedSlotId = sortedLocked[0].id;
+  const occupiedIds = sortedLocked.map((r) => r.id);
+
+  // 4) 예약 insert (confirmed). 코드 충돌 재시도. 이메일 없음.
+  let code = "";
+  let inserted = false;
+  for (let attempt = 0; attempt < 6 && !inserted; attempt++) {
+    code = generateCode();
+    const { error } = await sb.from("bookings").insert({
+      code,
+      customer_id: customerId,
+      customer_name: name,
+      customer_contact: contact,
+      customer_email: email,
+      referral_source: referral,
+      services: lines,
+      estimated_total: estimatedTotal,
+      note: (input.note ?? "").trim(),
+      status: "confirmed",
+      confirmed_slot_id: confirmedSlotId,
+      occupied_slot_ids: occupiedIds,
+    });
+    if (!error) inserted = true;
+    else if (error.code !== "23505") {
+      // 코드 중복이 아니면 실패 → 슬롯 롤백
+      await sb.from("availability_slots").update({ status: "open" }).in("id", occupiedIds);
+      return { ok: false, error: "DB" };
+    }
+  }
+  if (!inserted) {
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occupiedIds);
+    return { ok: false, error: "DB" };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  revalidatePath("/admin/customers");
+  return { ok: true, code };
 }
 
 export async function declineBooking(input: {
