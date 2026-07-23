@@ -11,7 +11,9 @@ import { formatSlot } from "@/lib/format";
 import { hashPassword, makeSalt } from "@/lib/hash";
 import { findBookingCodeByNamePassword } from "@/lib/data";
 import { bookingDurationMin, canBook, fitFrom, sortSlots } from "@/lib/scheduling";
-import type { Booking, BookingServiceLine, Service } from "@/lib/types";
+import { generateCode } from "@/lib/code";
+import { buildServiceLines } from "@/lib/bookingLines";
+import type { Booking, Service } from "@/lib/types";
 
 /** 언어 전환 — 쿠키 설정 후 페이지 새로고침용 */
 export async function setLocale(locale: string) {
@@ -66,16 +68,6 @@ export type CreateBookingResult =
   | { ok: true; code: string }
   | { ok: false; error: string };
 
-// 사람이 헷갈리지 않는 문자만 사용 (0/O, 1/I 제외)
-const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-function generateCode(len = 6): string {
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (let i = 0; i < len; i++) out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
-  return out;
-}
-
 export async function createBooking(
   input: CreateBookingInput,
 ): Promise<CreateBookingResult> {
@@ -103,27 +95,7 @@ export async function createBooking(
     .select("*")
     .in("id", serviceIds)
     .eq("active", true);
-  const svcMap = new Map<string, Service>(
-    ((svcRows as Service[]) ?? []).map((s) => [s.id, s]),
-  );
-
-  const lines: BookingServiceLine[] = [];
-  for (const sel of input.services) {
-    const svc = svcMap.get(sel.service_id);
-    if (!svc) continue;
-    const qty = Math.max(1, Math.min(20, Math.floor(sel.quantity || 1)));
-    const subtotal = Number(svc.price) * qty;
-    lines.push({
-      service_id: svc.id,
-      name_ko: svc.name_ko,
-      name_en: svc.name_en,
-      unit: svc.unit,
-      unit_price: Number(svc.price),
-      duration_min: Number(svc.duration_min) || 0,
-      quantity: qty,
-      subtotal,
-    });
-  }
+  const lines = buildServiceLines((svcRows as Service[]) ?? [], input.services);
   if (lines.length === 0) return { ok: false, error: "NO_SERVICE" };
   const estimatedTotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
 
