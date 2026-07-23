@@ -99,3 +99,18 @@ export function canBook(
 export function sortSlots<T extends { starts_at: string }>(slots: T[]): T[] {
   return [...slots].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 }
+
+/** startISO(UTC)부터 durationMin 을 채우는 연속 30분 슬롯 시작 ISO 목록 */
+export function slotStartsForDuration(
+  startISO: string,
+  durationMin: number,
+): string[] {
+  const need = neededSlots(durationMin);
+  const t0 = new Date(startISO).getTime();
+  const step = SLOT_MIN * 60000;
+  const out: string[] = [];
+  for (let k = 0; k < need; k++) {
+    out.push(new Date(t0 + k * step).toISOString());
+  }
+  return out;
+}
