@@ -578,6 +578,16 @@ export async function blockRange(input: {
   const note_ko = (input.reasonKo ?? "").trim();
   const note_en = (input.reasonEn ?? "").trim();
 
+  // 이후 어느 단계에서 실패하더라도 이 그룹으로 만든 blocked 행만 되돌린다.
+  // (booked 로 확정된 행은 애초에 이 그룹에 속하지 않으므로 삭제 대상이 아니다.)
+  async function rollback() {
+    await sb
+      .from("availability_slots")
+      .delete()
+      .eq("block_group", group)
+      .eq("status", "blocked");
+  }
+
   // 2) 아직 없는 시각만 새로 생성한다. ignoreDuplicates 이므로 기존 행(특히 방금
   //    booked 로 바뀐 행)은 이 문장으로는 절대 건드리지 않는다.
   const { error: insErr } = await sb.from("availability_slots").upsert(
@@ -601,24 +611,25 @@ export async function blockRange(input: {
     .in("starts_at", isos)
     .neq("status", "booked")
     .select("id");
-  if (updErr) return { ok: false, error: "DB" };
+  if (updErr) {
+    await rollback();
+    return { ok: false, error: "DB" };
+  }
 
   // 4) 결과 검증: 이 block_group 으로 실제 blocked 된 행 수가 요청 범위 전체와
   //    같아야 한다. 부족하면 2)~3) 사이 경쟁으로 일부 슬롯이 booked 로 바뀌어
   //    누락된 것 — 방금 이 그룹으로 만든 blocked 행만 되돌리고 실패를 반환한다.
-  //    (booked 로 확정된 행은 애초에 이 그룹에 속하지 않으므로 삭제 대상이 아니다.)
   const { data: finalRows, error: cntErr } = await sb
     .from("availability_slots")
     .select("id")
     .eq("block_group", group)
     .eq("status", "blocked");
-  if (cntErr) return { ok: false, error: "DB" };
+  if (cntErr) {
+    await rollback();
+    return { ok: false, error: "DB" };
+  }
   if ((finalRows?.length ?? 0) !== isos.length) {
-    await sb
-      .from("availability_slots")
-      .delete()
-      .eq("block_group", group)
-      .eq("status", "blocked");
+    await rollback();
     return { ok: false, error: "SLOT_TAKEN" };
   }
 
