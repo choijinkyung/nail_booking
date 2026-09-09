@@ -276,8 +276,14 @@ export async function acceptProposedTime(input: {
     .in("id", occ)
     .eq("status", "open")
     .select("id");
-  if (!locked || locked.length !== occ.length) {
-    await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
+  const lockedIds = ((locked as { id: string }[] | null) ?? []).map((r) => r.id);
+  if (lockedIds.length !== occ.length) {
+    // 우리가 실제로 잠근 것만 되돌린다. occ 전체를 open 으로 돌리면
+    // 동시에 다른 예약이 채간 슬롯까지 풀려 이중 예약이 된다.
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .in("id", lockedIds);
     return { ok: false, error: "SLOT_TAKEN" };
   }
 
