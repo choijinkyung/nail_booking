@@ -114,3 +114,54 @@ export function plannedSlots(input: {
   // 서머타임 전환일에는 벽시계 순서와 UTC 순서가 어긋날 수 있으므로 정렬한다.
   return [...new Set(out)].sort();
 }
+
+/**
+ * 시각 문자열의 표준 키(epoch ms).
+ *
+ * DB(PostgREST)는 "2026-09-09T23:00:00+00:00" 을, JS `toISOString()` 은
+ * "2026-09-09T23:00:00.000Z" 를 준다. 같은 순간인데 문자열이 다르므로
+ * 두 출처의 시각을 문자열로 비교해서는 안 된다.
+ */
+export function instantKey(ts: string): string {
+  return String(new Date(ts).getTime());
+}
+
+export interface ExistingSlot {
+  id: string;
+  starts_at: string;
+  status: string;
+  generated: boolean;
+}
+
+/**
+ * 계획과 현재 DB 상태를 비교해 무엇을 만들고 무엇을 지울지 정한다.
+ *
+ * 지우는 대상은 오직 '자동생성된 빈 슬롯'뿐이며, 그중에서도
+ * 확인 대기 예약이 잡아둔 슬롯은 제외한다 — 대기 예약은 확정 전까지
+ * 슬롯을 open 상태로 붙들고 있어서, 지우면 그 예약을 확정할 수 없게 된다.
+ */
+export function syncPlan(input: {
+  planned: string[];
+  existing: ExistingSlot[];
+  heldSlotIds: string[];
+}): { createIsos: string[]; removeIds: string[] } {
+  const plannedKeys = new Set(input.planned.map(instantKey));
+  const existingKeys = new Set(input.existing.map((r) => instantKey(r.starts_at)));
+  const held = new Set(input.heldSlotIds);
+
+  const createIsos = input.planned.filter(
+    (iso) => !existingKeys.has(instantKey(iso)),
+  );
+
+  const removeIds = input.existing
+    .filter(
+      (r) =>
+        r.generated &&
+        r.status === "open" &&
+        !held.has(r.id) &&
+        !plannedKeys.has(instantKey(r.starts_at)),
+    )
+    .map((r) => r.id);
+
+  return { createIsos, removeIds };
+}

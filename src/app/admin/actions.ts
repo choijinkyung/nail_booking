@@ -31,7 +31,9 @@ import { normalizePhone } from "@/lib/phone";
 import {
   clampWindowDays,
   plannedSlots,
+  syncPlan,
   type BusinessHour,
+  type ExistingSlot,
 } from "@/lib/schedule";
 import { getBusinessHours, getDaysOff, getSettings } from "@/lib/data";
 
@@ -1241,7 +1243,6 @@ export async function syncGeneratedSlots(): Promise<
   })
     // 오늘 이미 지난 시간은 만들지 않는다.
     .filter((iso) => iso >= nowIso);
-  const plannedSet = new Set(planned);
 
   // 창 안의 기존 슬롯 (과거는 조회조차 하지 않아 실수로 지울 여지를 없앤다)
   const { data: existingRows, error: selErr } = await sb
@@ -1249,18 +1250,35 @@ export async function syncGeneratedSlots(): Promise<
     .select("id, starts_at, status, generated")
     .gte("starts_at", nowIso);
   if (selErr) return { ok: false, error: "DB" };
-  const existing =
-    (existingRows as {
-      id: string;
-      starts_at: string;
-      status: string;
-      generated: boolean;
-    }[]) ?? [];
-  const existingIsos = new Set(existing.map((r) => r.starts_at));
+  const existing = (existingRows as ExistingSlot[]) ?? [];
+
+  // 확인 대기 예약이 붙들고 있는 슬롯 — 확정 전까지 open 이라 그냥 두면
+  // 동기화가 지워버리고, 그러면 그 예약을 확정할 수 없게 된다.
+  const { data: pendingRows, error: pendErr } = await sb
+    .from("bookings")
+    .select("preferred_slot_id, alternative_slot_ids, proposed_slot_ids")
+    .eq("status", "pending");
+  if (pendErr) return { ok: false, error: "DB" };
+  const heldSlotIds = (
+    (pendingRows as {
+      preferred_slot_id: string | null;
+      alternative_slot_ids: string[] | null;
+      proposed_slot_ids: string[] | null;
+    }[]) ?? []
+  ).flatMap((b) => [
+    ...(b.preferred_slot_id ? [b.preferred_slot_id] : []),
+    ...(b.alternative_slot_ids ?? []),
+    ...(b.proposed_slot_ids ?? []),
+  ]);
+
+  const { createIsos: toCreate, removeIds: toRemove } = syncPlan({
+    planned,
+    existing,
+    heldSlotIds,
+  });
 
   // 1) 없는 시각을 generated open 으로 만든다.
   //    ignoreDuplicates 이므로 이미 booked/blocked 인 행은 그대로 둔다.
-  const toCreate = planned.filter((iso) => !existingIsos.has(iso));
   if (toCreate.length > 0) {
     const { error } = await sb.from("availability_slots").upsert(
       toCreate.map((iso) => ({
@@ -1274,12 +1292,6 @@ export async function syncGeneratedSlots(): Promise<
   }
 
   // 2) 더 이상 영업시간이 아닌 '자동생성된 빈 슬롯'만 지운다.
-  const toRemove = existing
-    .filter(
-      (r) =>
-        r.generated && r.status === "open" && !plannedSet.has(r.starts_at),
-    )
-    .map((r) => r.id);
   if (toRemove.length > 0) {
     const { error } = await sb
       .from("availability_slots")
