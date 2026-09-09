@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
-import type { BookingStatus, BookingWithSlots } from "@/lib/types";
+import type { BookingStatus, BookingWithSlots, Service } from "@/lib/types";
+import type { BlockSlot } from "@/lib/data";
 import { formatDuration, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 
 interface CalEvent {
@@ -38,14 +39,26 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+export interface PickerCustomer {
+  id: string;
+  name: string;
+  contact: string;
+}
+
 export function BookingCalendar({
   bookings,
+  blocks,
+  services,
+  customers,
   today,
   dict,
   locale,
   currency,
 }: {
   bookings: BookingWithSlots[];
+  blocks: BlockSlot[];
+  services: Service[];
+  customers: PickerCustomer[];
   today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;

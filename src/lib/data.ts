@@ -114,6 +114,26 @@ export async function getFutureSlots(): Promise<AvailabilitySlot[]> {
   }
 }
 
+/** 관리자 블록(범위 차단) 슬롯. block_group 이 붙은 blocked 슬롯만. */
+export type BlockSlot = {
+  block_group: string;
+  starts_at: string;
+  note_ko: string;
+  note_en: string;
+};
+
+export async function getBlocks(): Promise<BlockSlot[]> {
+  if (!isSupabaseAdminConfigured()) return [];
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("availability_slots")
+    .select("block_group, starts_at, note_ko, note_en")
+    .eq("status", "blocked")
+    .not("block_group", "is", null)
+    .order("starts_at", { ascending: true });
+  return (data as BlockSlot[]) ?? [];
+}
+
 /** 관리자용: 전체 시간대 (미래 우선) */
 export async function getAllSlots(): Promise<AvailabilitySlot[]> {
   if (!isSupabaseAdminConfigured()) return [];
