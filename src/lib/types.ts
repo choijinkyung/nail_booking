@@ -65,7 +65,8 @@ export interface BookingServiceLine {
 
 export interface Customer {
   id: string;
-  contact: string;
+  contact: string;          // 손님이 입력한 원본 (화면 표시용)
+  contact_norm: string;     // 숫자만 남긴 매칭 키 — @/lib/phone 의 normalizePhone
   name: string;
   email: string;
   referral_source: string;
@@ -79,6 +80,7 @@ export interface Booking {
   customer_id: string | null;
   customer_name: string;
   customer_contact: string;
+  customer_contact_norm: string;
   customer_email: string;
   referral_source: string;
   final_price: number | null;

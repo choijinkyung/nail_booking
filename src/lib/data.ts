@@ -1,7 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { isSupabaseAdminConfigured } from "./supabase/config";
-import { hashPassword } from "./hash";
+import { normalizePhone } from "./phone";
 import type {
   AvailabilitySlot,
   Booking,
@@ -249,38 +249,31 @@ export async function getGalleryPhotos(): Promise<GalleryPhoto[]> {
   }
 }
 
-/** 이름 + 확인용 비밀번호로 예약 코드 찾기 (가장 최근 매칭) */
-export async function findBookingCodeByNamePassword(
+/**
+ * 이름 + 전화번호로 예약 코드 찾기 (가장 최근 매칭).
+ * 전화번호는 표기가 달라도 맞도록 정규화 키로 비교하고,
+ * 이름은 대소문자·앞뒤 공백을 무시한다.
+ */
+export async function findBookingCodeByNamePhone(
   name: string,
-  password: string,
+  phone: string,
 ): Promise<string | null> {
   if (!isSupabaseAdminConfigured()) return null;
-  if (!name.trim() || !password) return null;
+  const cleanName = (name ?? "").trim();
+  const norm = normalizePhone(phone ?? "");
+  // 숫자가 없는 입력(카톡 아이디 등)으로는 찾을 수 없다 — 예약번호로 조회해야 한다.
+  if (!cleanName || !norm) return null;
   try {
     const sb = createSupabaseAdminClient();
     const { data } = await sb
       .from("bookings")
-      .select("code, lookup_password_hash, lookup_password_salt")
-      .ilike("customer_name", name.trim())
+      .select("code")
+      .ilike("customer_name", cleanName)
+      .eq("customer_contact_norm", norm)
       .order("created_at", { ascending: false })
-      .limit(30);
-    const rows =
-      (data as {
-        code: string;
-        lookup_password_hash: string;
-        lookup_password_salt: string;
-      }[]) ?? [];
-    for (const row of rows) {
-      if (
-        row.lookup_password_hash &&
-        row.lookup_password_salt &&
-        hashPassword(password, row.lookup_password_salt) ===
-          row.lookup_password_hash
-      ) {
-        return row.code;
-      }
-    }
-    return null;
+      .limit(1);
+    const rows = (data as { code: string }[]) ?? [];
+    return rows[0]?.code ?? null;
   } catch {
     return null;
   }

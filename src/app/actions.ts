@@ -8,8 +8,8 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { notifyAdminBookingUpdate, notifyAdminNewBooking } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
-import { hashPassword, makeSalt } from "@/lib/hash";
-import { findBookingCodeByNamePassword } from "@/lib/data";
+import { normalizePhone } from "@/lib/phone";
+import { findBookingCodeByNamePhone } from "@/lib/data";
 import { bookingDurationMin, canBook, fitFrom, sortSlots } from "@/lib/scheduling";
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
@@ -55,8 +55,7 @@ export interface CreateBookingInput {
   alternative_slot_ids: string[];
   customer_name: string;
   customer_contact: string;
-  customer_email?: string;
-  customer_password: string; // 예약 확인용 (이름+비밀번호 조회)
+  customer_email?: string; // 선택 — 없으면 확인 메일을 보내지 않는다
   referral_source?: string;
   reference_url?: string;
   reference_path?: string;
@@ -79,9 +78,8 @@ export async function createBooking(
   const name = (input.customer_name ?? "").trim();
   const contact = (input.customer_contact ?? "").trim();
   const email = (input.customer_email ?? "").trim();
-  const password = (input.customer_password ?? "").trim();
+  const contactNorm = normalizePhone(contact);
   if (!name || !contact) return { ok: false, error: "INVALID" };
-  if (password.length < 4) return { ok: false, error: "PASSWORD" };
   if (!input.preferred_slot_id) return { ok: false, error: "NO_PREFERRED" };
   if (!input.services || input.services.length === 0)
     return { ok: false, error: "NO_SERVICE" };
@@ -131,11 +129,18 @@ export async function createBooking(
   const referral = (input.referral_source ?? "").trim();
   let customerId: string | null = null;
   try {
-    const { data: existing } = await sb
-      .from("customers")
-      .select("id, referral_source")
-      .eq("contact", contact)
-      .maybeSingle();
+    // 전화번호가 있으면 정규화 키로, 없으면(카톡 아이디 등) 원본으로 매칭한다.
+    const { data: existing } = contactNorm
+      ? await sb
+          .from("customers")
+          .select("id, referral_source")
+          .eq("contact_norm", contactNorm)
+          .maybeSingle()
+      : await sb
+          .from("customers")
+          .select("id, referral_source")
+          .eq("contact", contact)
+          .maybeSingle();
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb
@@ -152,7 +157,13 @@ export async function createBooking(
     } else {
       const { data: created } = await sb
         .from("customers")
-        .insert({ contact, name, email, referral_source: referral })
+        .insert({
+          contact,
+          contact_norm: contactNorm,
+          name,
+          email,
+          referral_source: referral,
+        })
         .select("id")
         .single();
       customerId = (created as { id: string } | null)?.id ?? null;
@@ -162,8 +173,6 @@ export async function createBooking(
   }
 
   // 4) 유니크 코드로 insert (충돌 시 재시도)
-  const salt = makeSalt();
-  const passwordHash = hashPassword(password, salt);
   let code = "";
   let inserted = false;
   for (let attempt = 0; attempt < 6 && !inserted; attempt++) {
@@ -173,12 +182,11 @@ export async function createBooking(
       customer_id: customerId,
       customer_name: name,
       customer_contact: contact,
+      customer_contact_norm: contactNorm,
       customer_email: email,
       referral_source: referral,
       reference_url: (input.reference_url ?? "").trim(),
       reference_path: (input.reference_path ?? "").trim(),
-      lookup_password_hash: passwordHash,
-      lookup_password_salt: salt,
       services: lines,
       estimated_total: estimatedTotal,
       note: (input.note ?? "").trim(),
@@ -225,14 +233,14 @@ export async function createBooking(
   return { ok: true, code };
 }
 
-// ── 이름 + 비밀번호로 예약 조회 (예약 코드 반환) ──
-export async function lookupByNamePassword(input: {
+// ── 이름 + 전화번호로 예약 조회 (예약 코드 반환) ──
+export async function lookupByNamePhone(input: {
   name: string;
-  password: string;
+  phone: string;
 }): Promise<{ ok: true; code: string } | { ok: false }> {
-  const code = await findBookingCodeByNamePassword(
+  const code = await findBookingCodeByNamePhone(
     input.name ?? "",
-    input.password ?? "",
+    input.phone ?? "",
   );
   return code ? { ok: true, code } : { ok: false };
 }

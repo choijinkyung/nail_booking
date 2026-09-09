@@ -27,6 +27,7 @@ import type {
 } from "@/lib/types";
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
+import { normalizePhone } from "@/lib/phone";
 
 // ── 인증 ─────────────────────────────────────────────────────
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -237,21 +238,35 @@ export async function createAdminBooking(input: {
     email = (input.customer.email ?? "").trim();
     referral = (input.customer.referral ?? "").trim();
     if (!name || !contact) return { ok: false, error: "INVALID" };
+    // 전화번호가 있으면 정규화 키로, 없으면(카톡 아이디 등) 원본으로 매칭한다.
+    const contactNorm = normalizePhone(contact);
     const { data: existing } = await sb
-      .from("customers").select("id").eq("contact", contact).maybeSingle();
+      .from("customers")
+      .select("id")
+      .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
+      .maybeSingle();
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb.from("customers").update({ name, email }).eq("id", customerId);
     } else {
       const { data: created, error: insErr } = await sb
         .from("customers")
-        .insert({ contact, name, email, referral_source: referral })
+        .insert({
+          contact,
+          contact_norm: contactNorm,
+          name,
+          email,
+          referral_source: referral,
+        })
         .select("id").single();
       customerId = (created as { id: string } | null)?.id ?? null;
       if (!customerId && insErr?.code === "23505") {
         // 동시에 같은 연락처로 등록된 경우: 방금 다른 요청이 만든 행을 재조회해 연결한다.
         const { data: raced } = await sb
-          .from("customers").select("id").eq("contact", contact).maybeSingle();
+          .from("customers")
+          .select("id")
+          .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
+          .maybeSingle();
         customerId = (raced as { id: string } | null)?.id ?? null;
       }
     }
@@ -293,6 +308,7 @@ export async function createAdminBooking(input: {
       customer_id: customerId,
       customer_name: name,
       customer_contact: contact,
+      customer_contact_norm: normalizePhone(contact),
       customer_email: email,
       referral_source: referral,
       services: lines,
@@ -898,12 +914,16 @@ export async function createCustomer(input: {
   const name = (input.name ?? "").trim();
   const contact = (input.contact ?? "").trim();
   if (!name || !contact) return { ok: false, error: "INVALID" };
+  // 표기가 달라도 같은 번호면 같은 고객으로 본다(카톡 아이디 등은 원본 비교).
+  const contactNorm = normalizePhone(contact);
+  const matchCol = contactNorm ? "contact_norm" : "contact";
+  const matchVal = contactNorm || contact;
 
   const sb = createSupabaseAdminClient();
   const { data: existing } = await sb
     .from("customers")
     .select("id")
-    .eq("contact", contact)
+    .eq(matchCol, matchVal)
     .maybeSingle();
   if (existing) {
     return { ok: true, id: (existing as { id: string }).id, existed: true };
@@ -914,6 +934,7 @@ export async function createCustomer(input: {
     .insert({
       name,
       contact,
+      contact_norm: contactNorm,
       email: (input.email ?? "").trim(),
       referral_source: (input.referral ?? "").trim(),
       memo: (input.memo ?? "").trim(),
@@ -926,7 +947,7 @@ export async function createCustomer(input: {
     const { data: raced } = await sb
       .from("customers")
       .select("id")
-      .eq("contact", contact)
+      .eq(matchCol, matchVal)
       .maybeSingle();
     const racedId = (raced as { id: string } | null)?.id;
     if (racedId) return { ok: true, id: racedId, existed: true };
@@ -978,11 +999,12 @@ export async function findCustomerByContact(contact: string): Promise<{
   const c = (contact ?? "").trim();
   if (!c) return null;
 
+  const norm = normalizePhone(c);
   const sb = createSupabaseAdminClient();
   const { data } = await sb
     .from("customers")
     .select("id, name, contact, email, referral_source")
-    .eq("contact", c)
+    .eq(norm ? "contact_norm" : "contact", norm || c)
     .maybeSingle();
   return (
     (data as {
