@@ -11,7 +11,7 @@ import {
 } from "@/lib/adminAuth";
 import { notifyCustomerCompleted, notifyCustomerResult } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
-import { formatMoney, formatSlot } from "@/lib/format";
+import { formatMoney, formatSlot, slotDayKey } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import {
   bookingDurationMin,
@@ -28,6 +28,12 @@ import type {
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
 import { normalizePhone } from "@/lib/phone";
+import {
+  clampWindowDays,
+  plannedSlots,
+  type BusinessHour,
+} from "@/lib/schedule";
+import { getBusinessHours, getDaysOff, getSettings } from "@/lib/data";
 
 // ── 인증 ─────────────────────────────────────────────────────
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -1200,4 +1206,154 @@ export async function saveSettings(
   revalidatePath("/admin/settings");
   revalidatePath("/");
   return { ok: true };
+}
+
+// ── 반복 영업시간 (Square 식 자동 스케줄) ─────────────────────
+
+/**
+ * 설정된 영업시간대로 예약 가능 시간을 맞춘다.
+ *
+ * 안전 규칙 — 아래는 **절대 건드리지 않는다**:
+ *  - 예약된 슬롯(booked) / 막아둔 슬롯(blocked)
+ *  - 손으로 추가한 슬롯(generated = false)
+ *  - 과거 슬롯 (기록 보존)
+ * 즉 영업시간을 줄여도 이미 잡힌 예약은 사라지지 않는다.
+ */
+export async function syncGeneratedSlots(): Promise<
+  { ok: true; created: number; removed: number } | { ok: false; error: string }
+> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+
+  const [settings, hours, daysOff] = await Promise.all([
+    getSettings(),
+    getBusinessHours(),
+    getDaysOff(),
+  ]);
+
+  const nowIso = new Date().toISOString();
+  const todayDayKey = slotDayKey(nowIso);
+  const planned = plannedSlots({
+    todayDayKey,
+    windowDays: settings.booking_window_days,
+    hours,
+    daysOff,
+  })
+    // 오늘 이미 지난 시간은 만들지 않는다.
+    .filter((iso) => iso >= nowIso);
+  const plannedSet = new Set(planned);
+
+  // 창 안의 기존 슬롯 (과거는 조회조차 하지 않아 실수로 지울 여지를 없앤다)
+  const { data: existingRows, error: selErr } = await sb
+    .from("availability_slots")
+    .select("id, starts_at, status, generated")
+    .gte("starts_at", nowIso);
+  if (selErr) return { ok: false, error: "DB" };
+  const existing =
+    (existingRows as {
+      id: string;
+      starts_at: string;
+      status: string;
+      generated: boolean;
+    }[]) ?? [];
+  const existingIsos = new Set(existing.map((r) => r.starts_at));
+
+  // 1) 없는 시각을 generated open 으로 만든다.
+  //    ignoreDuplicates 이므로 이미 booked/blocked 인 행은 그대로 둔다.
+  const toCreate = planned.filter((iso) => !existingIsos.has(iso));
+  if (toCreate.length > 0) {
+    const { error } = await sb.from("availability_slots").upsert(
+      toCreate.map((iso) => ({
+        starts_at: iso,
+        status: "open",
+        generated: true,
+      })),
+      { onConflict: "starts_at", ignoreDuplicates: true },
+    );
+    if (error) return { ok: false, error: "DB" };
+  }
+
+  // 2) 더 이상 영업시간이 아닌 '자동생성된 빈 슬롯'만 지운다.
+  const toRemove = existing
+    .filter(
+      (r) =>
+        r.generated && r.status === "open" && !plannedSet.has(r.starts_at),
+    )
+    .map((r) => r.id);
+  if (toRemove.length > 0) {
+    const { error } = await sb
+      .from("availability_slots")
+      .delete()
+      .in("id", toRemove)
+      .eq("generated", true)
+      .eq("status", "open"); // 조회~삭제 사이에 예약이 잡혔다면 건너뛴다
+    if (error) return { ok: false, error: "DB" };
+  }
+
+  revalidatePath("/admin/availability");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/book");
+  revalidatePath("/");
+  return { ok: true, created: toCreate.length, removed: toRemove.length };
+}
+
+/** 요일별 영업시간 + 예약 창 저장 후 곧바로 동기화한다. */
+export async function saveBusinessHours(input: {
+  hours: BusinessHour[];
+  windowDays: number;
+}): Promise<{ ok: true; created: number; removed: number } | { ok: false; error: string }> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+
+  const rows = (input.hours ?? [])
+    .filter((h) => h.weekday >= 0 && h.weekday <= 6)
+    .map((h) => ({
+      weekday: h.weekday,
+      enabled: Boolean(h.enabled),
+      start_min: Math.max(0, Math.min(1440, Math.floor(h.start_min))),
+      end_min: Math.max(0, Math.min(1440, Math.floor(h.end_min))),
+      updated_at: new Date().toISOString(),
+    }));
+  if (rows.length !== 7) return { ok: false, error: "INVALID" };
+
+  const { error: hErr } = await sb
+    .from("business_hours")
+    .upsert(rows, { onConflict: "weekday" });
+  if (hErr) return { ok: false, error: "DB" };
+
+  const { error: sErr } = await sb
+    .from("settings")
+    .update({ booking_window_days: clampWindowDays(input.windowDays) })
+    .eq("id", 1);
+  if (sErr) return { ok: false, error: "DB" };
+
+  return syncGeneratedSlots();
+}
+
+/** 특정 날짜 휴무 지정 — 그날의 자동생성 빈 슬롯은 동기화가 걷어낸다. */
+export async function addDayOff(input: {
+  day: string;
+}): Promise<{ ok: true; created: number; removed: number } | { ok: false; error: string }> {
+  await assertAdmin();
+  const day = (input.day ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("schedule_days_off")
+    .upsert({ day }, { onConflict: "day", ignoreDuplicates: true });
+  if (error) return { ok: false, error: "DB" };
+  return syncGeneratedSlots();
+}
+
+/** 휴무 해제 */
+export async function removeDayOff(input: {
+  day: string;
+}): Promise<{ ok: true; created: number; removed: number } | { ok: false; error: string }> {
+  await assertAdmin();
+  const day = (input.day ?? "").trim();
+  if (!day) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb.from("schedule_days_off").delete().eq("day", day);
+  if (error) return { ok: false, error: "DB" };
+  return syncGeneratedSlots();
 }

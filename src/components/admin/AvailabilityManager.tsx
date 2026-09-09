@@ -4,287 +4,306 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot } from "@/lib/types";
-import { formatDateHeading, formatTimeOnly, localInputToISO, slotDayKey } from "@/lib/format";
-import { addSlot, addSlots, deleteSlot, setSlotStatus } from "@/app/admin/actions";
+import type { BusinessHour } from "@/lib/schedule";
+import { MAX_WINDOW_DAYS, MIN_WINDOW_DAYS } from "@/lib/schedule";
+import { formatDateHeading, formatTimeOnly, slotDayKey } from "@/lib/format";
+import {
+  addDayOff,
+  removeDayOff,
+  saveBusinessHours,
+  syncGeneratedSlots,
+} from "@/app/admin/actions";
+
+/** 08:00–22:00, 30분 간격 선택지 */
+const TIME_OPTIONS: number[] = [];
+for (let t = 0; t <= 1440; t += 30) TIME_OPTIONS.push(t);
+
+function hhmm(t: number): string {
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+function defaultHours(rows: BusinessHour[]): BusinessHour[] {
+  const byDay = new Map(rows.map((r) => [r.weekday, r]));
+  return Array.from({ length: 7 }, (_, weekday) => {
+    const r = byDay.get(weekday);
+    return {
+      weekday,
+      enabled: r?.enabled ?? false,
+      start_min: r?.start_min ?? 600,
+      end_min: r?.end_min ?? 1200,
+    };
+  });
+}
 
 export function AvailabilityManager({
   slots,
+  hours: initialHours,
+  daysOff,
+  windowDays: initialWindow,
+  today,
   dict,
   locale,
 }: {
   slots: AvailabilitySlot[];
+  hours: BusinessHour[];
+  daysOff: string[];
+  windowDays: number;
+  today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [value, setValue] = useState("");
-  const [rDate, setRDate] = useState("");
-  const [rStart, setRStart] = useState("10:00");
-  const [rEnd, setREnd] = useState("20:00");
-  const [err, setErr] = useState("");
   const a = dict.admin;
+  const router = useRouter();
+  const [hours, setHours] = useState(() => defaultHours(initialHours));
+  const [windowDays, setWindowDays] = useState(initialWindow);
+  const [newDayOff, setNewDayOff] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [pending, startTransition] = useTransition();
 
-  function run(fn: () => Promise<{ ok: boolean }>) {
+  const dayNames = a.weekdayNames.split(",");
+
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setErr("");
+    setMsg("");
     startTransition(async () => {
       try {
         const res = await fn();
-        if (res.ok) router.refresh();
-        else setErr(dict.booking.errGeneric);
+        if (res.ok) {
+          setMsg(a.syncResult);
+          router.refresh();
+        } else {
+          setErr(a.saveErr);
+        }
       } catch {
-        // 서버 액션이 예외(예: DB 미설정)로 실패한 경우도 표시
-        setErr(dict.admin.setupNeeded);
+        setErr(a.setupNeeded);
       }
     });
   }
 
-  function submitAdd() {
-    if (!value) return;
-    const iso = localInputToISO(value);
-    run(async () => {
-      const res = await addSlot({ startsAtISO: iso });
-      if (res.ok) setValue("");
-      return res;
+  function patch(weekday: number, next: Partial<BusinessHour>) {
+    setHours((prev) =>
+      prev.map((h) => (h.weekday === weekday ? { ...h, ...next } : h)),
+    );
+  }
+
+  // 열려있는 미래 슬롯을 날짜별 한 줄로 요약한다 (30분 줄을 전부 늘어놓지 않는다).
+  const nowIso = new Date().toISOString();
+  const openByDay = new Map<string, AvailabilitySlot[]>();
+  for (const s of slots) {
+    if (s.status !== "open" || s.starts_at < nowIso) continue;
+    const key = slotDayKey(s.starts_at);
+    if (!openByDay.has(key)) openByDay.set(key, []);
+    openByDay.get(key)!.push(s);
+  }
+  const summary = [...openByDay.entries()]
+    .sort((x, y) => x[0].localeCompare(y[0]))
+    .map(([key, list]) => {
+      const sorted = [...list].sort((p, q) =>
+        p.starts_at.localeCompare(q.starts_at),
+      );
+      return {
+        key,
+        first: sorted[0].starts_at,
+        last: sorted[sorted.length - 1].starts_at,
+        count: sorted.length,
+      };
     });
-  }
 
-  function submitRange() {
-    if (!rDate || !rStart || !rEnd) return;
-    const [sh, sm] = rStart.split(":").map(Number);
-    const [eh, em] = rEnd.split(":").map(Number);
-    const startMin = sh * 60 + sm;
-    const endMin = eh * 60 + em;
-    if (endMin <= startMin) {
-      setErr(dict.booking.errGeneric);
-      return;
-    }
-    const isos: string[] = [];
-    for (let m = startMin; m < endMin; m += 30) {
-      const hh = String(Math.floor(m / 60)).padStart(2, "0");
-      const mm = String(m % 60).padStart(2, "0");
-      isos.push(localInputToISO(`${rDate}T${hh}:${mm}`));
-    }
-    run(() => addSlots({ startsAtISOs: isos }));
-  }
-
-  const open = groupByDay(slots.filter((s) => s.status === "open"));
-  const blocked = slots.filter((s) => s.status === "blocked");
-  const booked = groupByDay(slots.filter((s) => s.status === "booked"));
+  const futureDaysOff = daysOff.filter((d) => d >= today);
+  const select =
+    "rounded-lg border border-brand-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-400 disabled:opacity-40";
 
   return (
-    <div>
-      {/* 추가 */}
-      <div className="rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="mb-2 text-sm font-semibold text-brand-800">{a.addSlot}</p>
+    <div className="space-y-3">
+      {/* ① 요일별 영업시간 */}
+      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+        <p className="text-sm font-semibold text-brand-800">{a.weeklyHours}</p>
+        <p className="mb-3 text-xs text-muted">{a.weeklyHoursHint}</p>
+
+        <ul className="space-y-1.5">
+          {hours.map((h) => (
+            <li key={h.weekday} className="flex items-center gap-2">
+              <label className="flex w-16 shrink-0 items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={h.enabled}
+                  onChange={(e) =>
+                    patch(h.weekday, { enabled: e.target.checked })
+                  }
+                />
+                <span
+                  className={
+                    h.enabled ? "font-semibold text-brand-900" : "text-muted"
+                  }
+                >
+                  {dayNames[h.weekday]}
+                </span>
+              </label>
+
+              {h.enabled ? (
+                <div className="flex items-center gap-1.5">
+                  <select
+                    aria-label={`${dayNames[h.weekday]} ${a.blockFrom}`}
+                    value={h.start_min}
+                    onChange={(e) =>
+                      patch(h.weekday, { start_min: Number(e.target.value) })
+                    }
+                    className={select}
+                  >
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {hhmm(t)}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-muted">–</span>
+                  <select
+                    aria-label={`${dayNames[h.weekday]} ${a.blockTo}`}
+                    value={h.end_min}
+                    onChange={(e) =>
+                      patch(h.weekday, { end_min: Number(e.target.value) })
+                    }
+                    className={select}
+                  >
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {hhmm(t)}
+                      </option>
+                    ))}
+                  </select>
+                  {h.end_min <= h.start_min && (
+                    <span className="text-xs text-amber-600">
+                      {a.invalidRange}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-sm text-muted">{a.dayOffLabel}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        <label className="mt-4 flex items-center gap-2 text-sm text-brand-900">
+          {a.windowDays}
+          <input
+            type="number"
+            min={MIN_WINDOW_DAYS}
+            max={MAX_WINDOW_DAYS}
+            value={windowDays}
+            onChange={(e) => setWindowDays(Number(e.target.value))}
+            className="w-20 rounded-lg border border-brand-200 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+          />
+          {a.windowDaysUnit}
+        </label>
+
+        <button
+          disabled={pending}
+          onClick={() => run(() => saveBusinessHours({ hours, windowDays }))}
+          className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {pending ? a.syncing : a.saveHours}
+        </button>
+
+        {msg && <p className="mt-2 text-sm text-green-700">{msg}</p>}
+        {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+      </section>
+
+      {/* ② 쉬는 날 */}
+      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+        <p className="text-sm font-semibold text-brand-800">{a.daysOffTitle}</p>
+        <p className="mb-3 text-xs text-muted">{a.daysOffHint}</p>
+
+        {futureDaysOff.length === 0 ? (
+          <p className="mb-3 text-sm text-muted">{a.noDaysOff}</p>
+        ) : (
+          <ul className="mb-3 space-y-1.5">
+            {futureDaysOff.map((d) => (
+              <li
+                key={d}
+                className="flex items-center justify-between rounded-xl border border-brand-100 px-3 py-2 text-sm"
+              >
+                <span className="text-brand-900">{d}</span>
+                <button
+                  disabled={pending}
+                  onClick={() => run(() => removeDayOff({ day: d }))}
+                  className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-600 disabled:opacity-40"
+                >
+                  {a.removeDayOff}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="flex gap-2">
           <input
-            type="datetime-local"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400"
+            type="date"
+            min={today}
+            value={newDayOff}
+            onChange={(e) => setNewDayOff(e.target.value)}
+            className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
           <button
-            onClick={submitAdd}
-            disabled={pending || !value}
-            className="shrink-0 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            disabled={pending || !newDayOff}
+            onClick={() =>
+              run(async () => {
+                const res = await addDayOff({ day: newDayOff });
+                if (res.ok) setNewDayOff("");
+                return res;
+              })
+            }
+            className="shrink-0 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            {a.addSlotBtn}
+            {a.addDayOff}
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* 범위로 30분 간격 생성 */}
-      <div className="mt-3 rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="mb-1 text-sm font-semibold text-brand-800">{a.addRange}</p>
-        <p className="mb-2 text-xs text-muted">{a.slotUnitNote}</p>
-        <div className="grid grid-cols-3 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted">{a.rangeDate}</span>
-            <input
-              type="date"
-              value={rDate}
-              onChange={(e) => setRDate(e.target.value)}
-              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted">{a.rangeStart}</span>
-            <input
-              type="time"
-              step={1800}
-              value={rStart}
-              onChange={(e) => setRStart(e.target.value)}
-              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted">{a.rangeEnd}</span>
-            <input
-              type="time"
-              step={1800}
-              value={rEnd}
-              onChange={(e) => setREnd(e.target.value)}
-              className="w-full rounded-xl border border-brand-200 bg-white px-2 py-2 text-sm"
-            />
-          </label>
-        </div>
-        <button
-          onClick={submitRange}
-          disabled={pending || !rDate}
-          className="mt-2 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {a.rangeGenerate}
-        </button>
-      </div>
-
-      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
-
-      {slots.length === 0 && (
-        <p className="mt-6 rounded-xl bg-white/60 p-4 text-sm text-muted">
-          {a.noSlotsAdmin}
-        </p>
-      )}
-
-      {/* 열린 시간 */}
-      {open.length > 0 && (
-        <Group title={`🟢 ${a.slotsOpen}`}>
-          {open.map((g) => (
-            <DayBlock key={g.key} iso={g.iso} locale={locale}>
-              {g.slots.map((s) => (
-                <SlotRow key={s.id} time={formatTimeOnly(s.starts_at, locale)}>
-                  <button
-                    onClick={() =>
-                      run(() => setSlotStatus({ slotId: s.id, status: "blocked" }))
-                    }
-                    disabled={pending}
-                    className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-600"
-                  >
-                    {a.block}
-                  </button>
-                  <button
-                    onClick={() => run(() => deleteSlot({ slotId: s.id }))}
-                    disabled={pending}
-                    className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600"
-                  >
-                    {a.removeSlot}
-                  </button>
-                </SlotRow>
-              ))}
-            </DayBlock>
-          ))}
-        </Group>
-      )}
-
-      {/* 막은 시간 */}
-      {blocked.length > 0 && (
-        <Group title={`⛔ ${a.slotsBlocked}`}>
-          <div className="space-y-2">
-            {blocked.map((s) => (
-              <SlotRow
-                key={s.id}
-                time={`${formatDateHeading(s.starts_at, locale)} · ${formatTimeOnly(s.starts_at, locale)}`}
-              >
-                <button
-                  onClick={() =>
-                    run(() => setSlotStatus({ slotId: s.id, status: "open" }))
-                  }
-                  disabled={pending}
-                  className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-600"
-                >
-                  {a.unblock}
-                </button>
-                <button
-                  onClick={() => run(() => deleteSlot({ slotId: s.id }))}
-                  disabled={pending}
-                  className="rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600"
-                >
-                  {a.removeSlot}
-                </button>
-              </SlotRow>
-            ))}
+      {/* ③ 지금 열려있는 시간 — 날짜당 한 줄 요약 */}
+      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-brand-800">
+              {a.openSummary}
+            </p>
+            <p className="text-xs text-muted">{a.openSummaryHint}</p>
           </div>
-        </Group>
-      )}
+          <button
+            disabled={pending}
+            onClick={() => run(() => syncGeneratedSlots())}
+            className="shrink-0 rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-600 disabled:opacity-40"
+          >
+            {a.refreshSlots}
+          </button>
+        </div>
 
-      {/* 예약된 시간 (잠금) */}
-      {booked.length > 0 && (
-        <Group title={`🔒 ${a.slotsBooked}`}>
-          {booked.map((g) => (
-            <DayBlock key={g.key} iso={g.iso} locale={locale}>
-              {g.slots.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between rounded-xl border border-green-100 bg-green-50/50 px-3 py-2 text-sm text-green-800"
-                >
-                  <span>{formatTimeOnly(s.starts_at, locale)}</span>
-                  <span className="text-xs">🔒 {a.slotsBooked}</span>
-                </div>
-              ))}
-            </DayBlock>
-          ))}
-        </Group>
-      )}
-    </div>
-  );
-}
-
-type DayGroup = { key: string; iso: string; slots: AvailabilitySlot[] };
-function groupByDay(slots: AvailabilitySlot[]): DayGroup[] {
-  const map = new Map<string, DayGroup>();
-  for (const s of slots) {
-    const key = slotDayKey(s.starts_at);
-    if (!map.has(key)) map.set(key, { key, iso: s.starts_at, slots: [] });
-    map.get(key)!.slots.push(s);
-  }
-  return [...map.values()];
-}
-
-function Group({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mt-6">
-      <h2 className="mb-2 text-sm font-bold text-brand-600">{title}</h2>
-      <div className="space-y-3">{children}</div>
-    </section>
-  );
-}
-
-function DayBlock({
-  iso,
-  locale,
-  children,
-}: {
-  iso: string;
-  locale: Locale;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="mb-1.5 text-xs font-semibold text-brand-400">
-        {formatDateHeading(iso, locale)}
-      </p>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function SlotRow({
-  time,
-  children,
-}: {
-  time: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-brand-100 bg-white px-3 py-2">
-      <span className="text-sm text-brand-900">{time}</span>
-      <div className="flex gap-2">{children}</div>
+        {summary.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{a.noOpenSlots}</p>
+        ) : (
+          <ul className="mt-3 space-y-1">
+            {summary.map((d) => (
+              <li
+                key={d.key}
+                className="flex items-center justify-between border-b border-brand-50 py-1.5 text-sm last:border-0"
+              >
+                <span className="text-brand-900">
+                  {formatDateHeading(d.first, locale)}
+                </span>
+                <span className="text-muted">
+                  {formatTimeOnly(d.first, locale)} –{" "}
+                  {formatTimeOnly(d.last, locale)}
+                  <span className="ml-2 text-xs">
+                    · {d.count}
+                    {a.slotsCount}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
