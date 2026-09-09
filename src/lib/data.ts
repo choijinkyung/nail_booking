@@ -2,6 +2,7 @@ import "server-only";
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { isSupabaseAdminConfigured } from "./supabase/config";
 import { normalizePhone } from "./phone";
+import type { BusinessHour } from "./schedule";
 import type {
   AvailabilitySlot,
   Booking,
@@ -112,6 +113,28 @@ export async function getFutureSlots(): Promise<AvailabilitySlot[]> {
   } catch {
     return [];
   }
+}
+
+/** 요일별 반복 영업시간 (0=일 … 6=토). 행이 없는 요일은 휴무로 본다. */
+export async function getBusinessHours(): Promise<BusinessHour[]> {
+  if (!isSupabaseAdminConfigured()) return [];
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("business_hours")
+    .select("weekday, enabled, start_min, end_min")
+    .order("weekday", { ascending: true });
+  return (data as BusinessHour[]) ?? [];
+}
+
+/** 지정 휴무일 (YYYY-MM-DD), 오늘 이후만 의미가 있으므로 전체를 읽어 화면에서 거른다. */
+export async function getDaysOff(): Promise<string[]> {
+  if (!isSupabaseAdminConfigured()) return [];
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("schedule_days_off")
+    .select("day")
+    .order("day", { ascending: true });
+  return ((data as { day: string }[]) ?? []).map((r) => r.day);
 }
 
 /** 관리자 블록(범위 차단) 슬롯. block_group 이 붙은 blocked 슬롯만. */

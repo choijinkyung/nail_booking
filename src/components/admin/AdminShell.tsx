@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { signOut } from "@/app/admin/actions";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { slotDayKey } from "@/lib/format";
+import { AutoSync } from "./AutoSync";
 import type { Dict } from "@/lib/i18n";
 
 type Tab =
@@ -44,6 +46,10 @@ export function AdminShell({
 }) {
   return (
     <div className="min-h-dvh pb-24">
+      {/* 하루 한 번 예약 가능 시간 동기화 (화면 출력 없음) */}
+      {isSupabaseAdminConfigured() && (
+        <AutoSync today={slotDayKey(new Date().toISOString())} />
+      )}
       <header className="sticky top-0 z-20 border-b border-brand-100 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <span className="font-bold text-brand-700">💅 {dict.admin.title}</span>
