@@ -68,6 +68,7 @@ export default async function AdminCustomersPage() {
       referral_source: c.referral_source,
       memo: c.memo,
       visits: completed.length,
+      isReturning: completed.length > 0,
       lastVisitIso,
       totalSpent,
       history,
