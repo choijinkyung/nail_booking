@@ -44,6 +44,7 @@ export function BookingManager({
   dict,
   locale,
   currency,
+  baseUrl,
 }: {
   bookings: BookingWithSlots[];
   openSlots: AvailabilitySlot[];
@@ -51,6 +52,7 @@ export function BookingManager({
   dict: Dict;
   locale: Locale;
   currency: string;
+  baseUrl: string;
 }) {
   const a = dict.admin;
   const nowIso = new Date().toISOString();
@@ -120,6 +122,7 @@ export function BookingManager({
       dict={dict}
       locale={locale}
       currency={currency}
+          baseUrl={baseUrl}
     />
   );
 

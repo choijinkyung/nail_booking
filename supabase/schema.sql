@@ -197,8 +197,49 @@ create table if not exists public.schedule_days_off (
 );
 alter table public.availability_slots
   add column if not exists generated boolean not null default false;
+alter table public.availability_slots
+  add column if not exists block_group uuid;
+create index if not exists availability_slots_block_group_idx
+  on public.availability_slots (block_group);
 alter table public.settings
   add column if not exists booking_window_days int not null default 14;
+
+-- ── 정규화 연락처 (이름+전화번호 조회용) ─────────────────────
+-- 마이그레이션 20260909000000_contact_norm.sql 미러
+create or replace function public.normalize_phone(raw text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  digits text;
+begin
+  digits := regexp_replace(coalesce(raw, ''), '\D', '', 'g');
+  if digits = '' then
+    return '';
+  end if;
+  if length(digits) = 11 and left(digits, 1) = '1' then
+    return substr(digits, 2);
+  end if;
+  if left(digits, 2) = '82' and length(digits) >= 11 then
+    return '0' || substr(digits, 3);
+  end if;
+  return digits;
+end;
+$$;
+
+alter table public.customers
+  add column if not exists contact_norm text not null default '';
+alter table public.bookings
+  add column if not exists customer_contact_norm text not null default '';
+
+create unique index if not exists customers_contact_norm_unique
+  on public.customers (contact_norm)
+  where contact_norm <> '';
+create index if not exists bookings_customer_contact_norm_idx
+  on public.bookings (customer_contact_norm);
+create index if not exists bookings_customer_name_lower_idx
+  on public.bookings (lower(customer_name));
 
 -- ── RLS: 브라우저에서 직접 접근 차단(앱은 service_role로만 접근) ──
 alter table public.services           enable row level security;

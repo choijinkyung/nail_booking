@@ -1,9 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
-import type { BookingStatus, BookingWithSlots } from "@/lib/types";
+import type { BookingStatus, BookingWithSlots, Service } from "@/lib/types";
+import type { BlockSlot } from "@/lib/data";
 import { formatDuration, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
+import { removeBlock } from "@/app/admin/actions";
+import { BlockForm } from "./BlockForm";
+import { NewBookingForm } from "./NewBookingForm";
 
 interface CalEvent {
   dayKey: string;
@@ -38,24 +43,38 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+export interface PickerCustomer {
+  id: string;
+  name: string;
+  contact: string;
+}
+
 export function BookingCalendar({
   bookings,
+  blocks,
+  services,
+  customers,
   today,
   dict,
   locale,
   currency,
 }: {
   bookings: BookingWithSlots[];
+  blocks: BlockSlot[];
+  services: Service[];
+  customers: PickerCustomer[];
   today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;
   currency: string;
 }) {
   const isEn = locale === "en";
+  const router = useRouter();
   const [ty, tm] = today.split("-").map(Number);
   const [year, setYear] = useState(ty);
   const [month, setMonth] = useState(tm - 1); // 0-indexed
   const [selected, setSelected] = useState(today);
+  const [pane, setPane] = useState<"none" | "booking" | "block">("none");
 
   // 이벤트 구성: 확정/완료는 확정시간, 대기는 1지망시간 기준
   const events = useMemo<CalEvent[]>(() => {
@@ -97,6 +116,37 @@ export function BookingCalendar({
     .filter((e) => e.dayKey.startsWith(monthPrefix))
     .reduce((s, e) => s + e.amount, 0);
 
+  // 같은 block_group 의 연속 슬롯을 한 줄(시작–종료)로 묶는다.
+  const blocksByDay = useMemo(() => {
+    const groups = new Map<string, { isos: string[]; note: string }>();
+    for (const b of blocks) {
+      const g = groups.get(b.block_group);
+      const note = isEn ? b.note_en : b.note_ko;
+      if (g) {
+        g.isos.push(b.starts_at);
+        if (!g.note && note) g.note = note;
+      } else {
+        groups.set(b.block_group, { isos: [b.starts_at], note });
+      }
+    }
+    const byDay = new Map<string, BlockRun[]>();
+    for (const [blockGroup, g] of groups) {
+      const sorted = [...g.isos].sort();
+      const startIso = sorted[0];
+      // 마지막 슬롯은 30분짜리이므로 종료 = 마지막 시작 + 30분
+      const endIso = new Date(
+        new Date(sorted[sorted.length - 1]).getTime() + 30 * 60000,
+      ).toISOString();
+      const dayKey = slotDayKey(startIso);
+      const run: BlockRun = { blockGroup, startIso, endIso, note: g.note };
+      if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+      byDay.get(dayKey)!.push(run);
+    }
+    for (const list of byDay.values())
+      list.sort((a, b) => a.startIso.localeCompare(b.startIso));
+    return byDay;
+  }, [blocks, isEn]);
+
   const eventsByDay = useMemo(() => {
     const m = new Map<string, CalEvent[]>();
     for (const e of events) {
@@ -116,6 +166,7 @@ export function BookingCalendar({
   ];
 
   const selectedEvents = eventsByDay.get(selected) ?? [];
+  const selectedBlocks = blocksByDay.get(selected) ?? [];
 
   function move(delta: number) {
     let m = month + delta;
@@ -224,6 +275,9 @@ export function BookingCalendar({
                     className={`h-1.5 w-1.5 rounded-full ${DOT[e.status] ?? "bg-brand-300"}`}
                   />
                 ))}
+                {blocksByDay.has(key) && (
+                  <span className="h-1.5 w-3 rounded-sm bg-gray-400" />
+                )}
               </span>
             </button>
           );
@@ -233,6 +287,61 @@ export function BookingCalendar({
       {/* 선택한 날 상세 */}
       <div className="mt-5">
         <h2 className="mb-2 text-sm font-bold text-brand-600">{selected}</h2>
+
+        {/* 이 날짜에 대한 관리자 작업 */}
+        <div className="mb-3 flex gap-2">
+          <button
+            onClick={() => setPane((p) => (p === "booking" ? "none" : "booking"))}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            ➕ {dict.admin.newBooking}
+          </button>
+          <button
+            onClick={() => setPane((p) => (p === "block" ? "none" : "block"))}
+            className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-700"
+          >
+            ⛔ {dict.admin.addBlock}
+          </button>
+        </div>
+
+        {pane === "booking" && (
+          <div className="mb-3">
+            <NewBookingForm
+              dayKey={selected}
+              services={services}
+              customers={customers}
+              dict={dict}
+              locale={locale}
+              currency={currency}
+              onDone={() => setPane("none")}
+            />
+          </div>
+        )}
+
+        {pane === "block" && (
+          <div className="mb-3">
+            <BlockForm
+              dayKey={selected}
+              dict={dict}
+              onDone={() => setPane("none")}
+            />
+          </div>
+        )}
+
+        {selectedBlocks.length > 0 && (
+          <ul className="mb-2 space-y-2">
+            {selectedBlocks.map((b) => (
+              <BlockRow
+                key={b.blockGroup}
+                run={b}
+                dict={dict}
+                locale={locale}
+                onRemoved={() => router.refresh()}
+              />
+            ))}
+          </ul>
+        )}
+
         {selectedEvents.length === 0 ? (
           <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
             {dict.admin.noBookingsOnDay}
@@ -284,8 +393,61 @@ export function BookingCalendar({
         <Legend color="bg-amber-400" label={dict.status.status_pending} />
         <Legend color="bg-green-500" label={dict.status.status_confirmed} />
         <Legend color="bg-brand-400" label={dict.status.status_completed} />
+        <Legend color="bg-gray-400" label={dict.admin.blockedLabel} />
       </div>
     </div>
+  );
+}
+
+interface BlockRun {
+  blockGroup: string;
+  startIso: string;
+  endIso: string;
+  note: string;
+}
+
+function BlockRow({
+  run,
+  dict,
+  locale,
+  onRemoved,
+}: {
+  run: BlockRun;
+  dict: Dict;
+  locale: Locale;
+  onRemoved: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-gray-400" />
+      <span className="w-24 shrink-0 text-sm font-semibold text-gray-700">
+        {formatTimeOnly(run.startIso, locale)}
+        <span className="block text-[11px] font-normal text-muted">
+          – {formatTimeOnly(run.endIso, locale)}
+        </span>
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-gray-800">
+          {dict.admin.blockedLabel}
+        </span>
+        {run.note && (
+          <span className="block truncate text-xs text-muted">{run.note}</span>
+        )}
+      </span>
+      <button
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const res = await removeBlock({ blockGroup: run.blockGroup });
+            if (res.ok) onRemoved();
+          })
+        }
+        className="ml-auto shrink-0 rounded-lg border border-gray-300 px-2.5 py-1 text-xs text-gray-600 disabled:opacity-40"
+      >
+        {dict.admin.removeBlockBtn}
+      </button>
+    </li>
   );
 }
 

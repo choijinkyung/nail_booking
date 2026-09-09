@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict } from "@/lib/i18n";
-import { lookupByNamePassword } from "@/app/actions";
+import { lookupByNamePhone } from "@/app/actions";
 
 export function StatusLookup({
   defaultCode,
@@ -14,10 +14,10 @@ export function StatusLookup({
 }) {
   const st = dict.status;
   const router = useRouter();
-  const [tab, setTab] = useState<"code" | "namepw">("code");
+  const [tab, setTab] = useState<"code" | "namephone">("code");
   const [code, setCode] = useState(defaultCode ?? "");
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -28,12 +28,12 @@ export function StatusLookup({
     if (!code.trim()) return;
     router.push(`/status?code=${encodeURIComponent(code.trim().toUpperCase())}`);
   }
-  function lookupNamePw() {
+  function lookupNamePhone() {
     setErr("");
     startTransition(async () => {
-      const res = await lookupByNamePassword({ name, password });
+      const res = await lookupByNamePhone({ name, phone });
       if (res.ok) router.push(`/status?code=${res.code}`);
-      else setErr(st.notFoundNamePw);
+      else setErr(st.notFoundNamePhone);
     });
   }
 
@@ -41,7 +41,7 @@ export function StatusLookup({
     <div>
       {/* 탭 */}
       <div className="mb-3 flex gap-2">
-        {(["code", "namepw"] as const).map((t) => (
+        {(["code", "namephone"] as const).map((t) => (
           <button
             key={t}
             onClick={() => {
@@ -54,7 +54,7 @@ export function StatusLookup({
                 : "border border-brand-200 bg-white text-brand-700"
             }`}
           >
-            {t === "code" ? st.tabCode : st.tabNamePw}
+            {t === "code" ? st.tabCode : st.tabNamePhone}
           </button>
         ))}
       </div>
@@ -87,15 +87,17 @@ export function StatusLookup({
           />
           <div className="flex gap-2">
             <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && lookupNamePw()}
-              type="password"
-              placeholder={st.passwordLabel}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && lookupNamePhone()}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder={st.phoneLookupLabel}
               className={inputClass}
             />
             <button
-              onClick={lookupNamePw}
+              onClick={lookupNamePhone}
               disabled={pending}
               className="shrink-0 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
             >

@@ -16,13 +16,18 @@ import { getLocale } from "@/lib/locale";
 import {
   bookingDurationMin,
   fitFrom,
+  slotStartsForDuration,
   sortSlots,
 } from "@/lib/scheduling";
 import type {
   AvailabilitySlot,
   Booking,
   BookingServiceLine,
+  Service,
 } from "@/lib/types";
+import { generateCode } from "@/lib/code";
+import { buildServiceLines } from "@/lib/bookingLines";
+import { normalizePhone } from "@/lib/phone";
 
 // ── 인증 ─────────────────────────────────────────────────────
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -179,6 +184,157 @@ export async function confirmBooking(input: {
   revalidatePath("/admin/availability");
   revalidatePath("/admin/calendar");
   return { ok: true };
+}
+
+/**
+ * 관리자가 직접 예약을 등록 (워크인/전화). 즉시 confirmed, 이메일 없음.
+ * 손님용 canBook 의 60분 최소 간격 규칙은 무시하며, 오직 이미 booked 된
+ * 슬롯과의 충돌만 막는다.
+ */
+export async function createAdminBooking(input: {
+  customer:
+    | { id: string }
+    | { name: string; contact: string; email?: string; referral?: string };
+  services: { service_id: string; quantity: number }[];
+  startsAtISO: string;
+  note?: string;
+}): Promise<{ ok: true; code: string } | { ok: false; error: string }> {
+  await assertAdmin();
+  if (!input.startsAtISO) return { ok: false, error: "INVALID" };
+  if (!input.services || input.services.length === 0)
+    return { ok: false, error: "NO_SERVICE" };
+  const sb = createSupabaseAdminClient();
+
+  // 1) 시술 스냅샷 (DB 가격 기준)
+  const serviceIds = [...new Set(input.services.map((s) => s.service_id))];
+  const { data: svcRows } = await sb
+    .from("services")
+    .select("*")
+    .in("id", serviceIds)
+    .eq("active", true);
+  const lines = buildServiceLines((svcRows as Service[]) ?? [], input.services);
+  if (lines.length === 0) return { ok: false, error: "NO_SERVICE" };
+  const estimatedTotal = lines.reduce((s, l) => s + l.subtotal, 0);
+  const duration = bookingDurationMin(lines);
+
+  // 2) 고객 확정 (기존 id 또는 연락처 upsert)
+  let customerId: string | null = null;
+  let name = "";
+  let contact = "";
+  let email = "";
+  let referral = "";
+  if ("id" in input.customer) {
+    const { data: c } = await sb
+      .from("customers")
+      .select("id, name, contact, email, referral_source")
+      .eq("id", input.customer.id)
+      .maybeSingle();
+    if (!c) return { ok: false, error: "NO_CUSTOMER" };
+    const cc = c as { id: string; name: string; contact: string; email: string; referral_source: string };
+    customerId = cc.id; name = cc.name; contact = cc.contact; email = cc.email; referral = cc.referral_source;
+  } else {
+    name = (input.customer.name ?? "").trim();
+    contact = (input.customer.contact ?? "").trim();
+    email = (input.customer.email ?? "").trim();
+    referral = (input.customer.referral ?? "").trim();
+    if (!name || !contact) return { ok: false, error: "INVALID" };
+    // 전화번호가 있으면 정규화 키로, 없으면(카톡 아이디 등) 원본으로 매칭한다.
+    const contactNorm = normalizePhone(contact);
+    const { data: existing } = await sb
+      .from("customers")
+      .select("id")
+      .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
+      .maybeSingle();
+    if (existing) {
+      customerId = (existing as { id: string }).id;
+      await sb.from("customers").update({ name, email }).eq("id", customerId);
+    } else {
+      const { data: created, error: insErr } = await sb
+        .from("customers")
+        .insert({
+          contact,
+          contact_norm: contactNorm,
+          name,
+          email,
+          referral_source: referral,
+        })
+        .select("id").single();
+      customerId = (created as { id: string } | null)?.id ?? null;
+      if (!customerId && insErr?.code === "23505") {
+        // 동시에 같은 연락처로 등록된 경우: 방금 다른 요청이 만든 행을 재조회해 연결한다.
+        const { data: raced } = await sb
+          .from("customers")
+          .select("id")
+          .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
+          .maybeSingle();
+        customerId = (raced as { id: string } | null)?.id ?? null;
+      }
+    }
+  }
+
+  // 3) 소요시간만큼 연속 30분 슬롯 확보 (없으면 생성). 규칙 무시, booked 와만 충돌 금지.
+  const occIsos = slotStartsForDuration(input.startsAtISO, duration);
+  // 없는 슬롯은 open 으로 생성 (이미 있으면 무시)
+  const { error: seedErr } = await sb.from("availability_slots").upsert(
+    occIsos.map((iso) => ({ starts_at: iso, status: "open" })),
+    { onConflict: "starts_at", ignoreDuplicates: true },
+  );
+  if (seedErr) return { ok: false, error: "DB" };
+  // 원자적 잠금: open 인 것만 booked 로. 하나라도 booked/blocked 면 개수 부족 → 충돌.
+  const { data: locked } = await sb
+    .from("availability_slots")
+    .update({ status: "booked" })
+    .in("starts_at", occIsos)
+    .eq("status", "open")
+    .select("id, starts_at");
+  const lockedRows = (locked as { id: string; starts_at: string }[] | null) ?? [];
+  if (lockedRows.length !== occIsos.length) {
+    // 롤백
+    await sb.from("availability_slots").update({ status: "open" })
+      .in("id", lockedRows.map((r) => r.id));
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+  const sortedLocked = [...lockedRows].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const confirmedSlotId = sortedLocked[0].id;
+  const occupiedIds = sortedLocked.map((r) => r.id);
+
+  // 4) 예약 insert (confirmed). 코드 충돌 재시도. 이메일 없음.
+  let code = "";
+  let inserted = false;
+  for (let attempt = 0; attempt < 6 && !inserted; attempt++) {
+    code = generateCode();
+    const { error } = await sb.from("bookings").insert({
+      code,
+      customer_id: customerId,
+      customer_name: name,
+      customer_contact: contact,
+      customer_contact_norm: normalizePhone(contact),
+      customer_email: email,
+      referral_source: referral,
+      services: lines,
+      estimated_total: estimatedTotal,
+      note: (input.note ?? "").trim(),
+      status: "confirmed",
+      confirmed_slot_id: confirmedSlotId,
+      occupied_slot_ids: occupiedIds,
+    });
+    if (!error) inserted = true;
+    else if (error.code !== "23505") {
+      // 코드 중복이 아니면 실패 → 슬롯 롤백
+      await sb.from("availability_slots").update({ status: "open" }).in("id", occupiedIds);
+      return { ok: false, error: "DB" };
+    }
+  }
+  if (!inserted) {
+    await sb.from("availability_slots").update({ status: "open" }).in("id", occupiedIds);
+    return { ok: false, error: "DB" };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  revalidatePath("/admin/customers");
+  return { ok: true, code };
 }
 
 export async function declineBooking(input: {
@@ -549,6 +705,137 @@ export async function deleteSlot(input: {
   return { ok: true };
 }
 
+export async function blockRange(input: {
+  startsAtISOs: string[];
+  reasonKo?: string;
+  reasonEn?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const isos = [...new Set((input.startsAtISOs ?? []).filter(Boolean))];
+  if (isos.length === 0) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+
+  // 1) 사전 조회: 대상 시간대에 이미 booked 슬롯이 있으면 전체 거부.
+  //    조회 자체가 실패하면(네트워크 등) booked 여부를 알 수 없으므로 안전하게 중단한다
+  //    (fail closed) — 이 결과만으로 최종 판단하지 않고, 아래 쓰기 단계에서 다시 한번
+  //    booked 를 배제해 조회~쓰기 사이의 경쟁 상태(동시 예약 확정)로부터도 보호한다.
+  const { data: existing, error: selErr } = await sb
+    .from("availability_slots")
+    .select("starts_at, status")
+    .in("starts_at", isos);
+  if (selErr) return { ok: false, error: "DB" };
+  const existingRows =
+    (existing as { starts_at: string; status: string }[] | null) ?? [];
+  const booked = existingRows.filter((s) => s.status === "booked");
+  if (booked.length > 0) {
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+  // 롤백 시 원상복구하려면, 우리가 새로 만든 행과 원래 있던 행을 구분해야 한다.
+  const priorStatusByIso = new Map(
+    existingRows.map((r) => [r.starts_at, r.status]),
+  );
+
+  const group = crypto.randomUUID();
+  const note_ko = (input.reasonKo ?? "").trim();
+  const note_en = (input.reasonEn ?? "").trim();
+
+  // 이후 어느 단계에서 실패하더라도 이 그룹이 만든 변경만 되돌린다.
+  // 새로 만든 행은 삭제하고, 원래 있던 행은 이전 상태(대개 open)로 되돌린다.
+  // 통째로 삭제하면 관리자가 열어둔 예약 가능 시간이 사라져 버린다.
+  // (booked 로 확정된 행은 이 그룹에 속하지 않으므로 어느 쪽에도 걸리지 않는다.)
+  async function rollback() {
+    const preexisting = isos.filter((iso) => priorStatusByIso.has(iso));
+    const created = isos.filter((iso) => !priorStatusByIso.has(iso));
+    if (created.length > 0) {
+      await sb
+        .from("availability_slots")
+        .delete()
+        .eq("block_group", group)
+        .eq("status", "blocked")
+        .in("starts_at", created);
+    }
+    for (const iso of preexisting) {
+      await sb
+        .from("availability_slots")
+        .update({
+          status: priorStatusByIso.get(iso),
+          block_group: null,
+          note_ko: "",
+          note_en: "",
+        })
+        .eq("starts_at", iso)
+        .eq("block_group", group);
+    }
+  }
+
+  // 2) 아직 없는 시각만 새로 생성한다. ignoreDuplicates 이므로 기존 행(특히 방금
+  //    booked 로 바뀐 행)은 이 문장으로는 절대 건드리지 않는다.
+  const { error: insErr } = await sb.from("availability_slots").upsert(
+    isos.map((iso) => ({
+      starts_at: iso,
+      status: "blocked",
+      block_group: group,
+      note_ko,
+      note_en,
+    })),
+    { onConflict: "starts_at", ignoreDuplicates: true },
+  );
+  if (insErr) return { ok: false, error: "DB" };
+
+  // 3) 기존 행만 blocked 로 갱신하되, 같은 문장에서 booked 를 제외한다(neq).
+  //    사전 조회 이후 다른 요청이 이 슬롯을 예약 확정(open→booked)했더라도
+  //    이 UPDATE 는 그 행을 대상에서 빼므로 확정된 예약을 절대 덮어쓰지 않는다.
+  const { error: updErr } = await sb
+    .from("availability_slots")
+    .update({ status: "blocked", block_group: group, note_ko, note_en })
+    .in("starts_at", isos)
+    .neq("status", "booked")
+    .select("id");
+  if (updErr) {
+    await rollback();
+    return { ok: false, error: "DB" };
+  }
+
+  // 4) 결과 검증: 이 block_group 으로 실제 blocked 된 행 수가 요청 범위 전체와
+  //    같아야 한다. 부족하면 2)~3) 사이 경쟁으로 일부 슬롯이 booked 로 바뀌어
+  //    누락된 것 — 방금 이 그룹으로 만든 blocked 행만 되돌리고 실패를 반환한다.
+  const { data: finalRows, error: cntErr } = await sb
+    .from("availability_slots")
+    .select("id")
+    .eq("block_group", group)
+    .eq("status", "blocked");
+  if (cntErr) {
+    await rollback();
+    return { ok: false, error: "DB" };
+  }
+  if ((finalRows?.length ?? 0) !== isos.length) {
+    await rollback();
+    return { ok: false, error: "SLOT_TAKEN" };
+  }
+
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  return { ok: true };
+}
+
+export async function removeBlock(input: {
+  blockGroup: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.blockGroup) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  // 그룹의 blocked 슬롯만 삭제 (블록은 관리자가 만든 것). booked 는 애초에 이 그룹에 없음.
+  const { error } = await sb
+    .from("availability_slots")
+    .delete()
+    .eq("block_group", input.blockGroup)
+    .eq("status", "blocked");
+  if (error) return { ok: false, error: "DB" };
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  return { ok: true };
+}
+
 // ── 가격/시술 관리 ───────────────────────────────────────────
 
 export async function saveService(input: {
@@ -612,19 +899,129 @@ export async function deleteService(input: {
 // ── 설정 ─────────────────────────────────────────────────────
 
 // ── 고객 메모 ────────────────────────────────────────────────
+/**
+ * 고객 등록. `contact`(연락처)가 중복이면 기존 고객을 `existed: true` 로 반환한다.
+ * 조회-후-삽입 사이의 경쟁은 UNIQUE 위반(23505)을 잡아 재조회로 흡수한다.
+ */
+export async function createCustomer(input: {
+  name: string;
+  contact: string;
+  email?: string;
+  referral?: string;
+  memo?: string;
+}): Promise<{ ok: true; id: string; existed: boolean } | { ok: false; error: string }> {
+  await assertAdmin();
+  const name = (input.name ?? "").trim();
+  const contact = (input.contact ?? "").trim();
+  if (!name || !contact) return { ok: false, error: "INVALID" };
+  // 표기가 달라도 같은 번호면 같은 고객으로 본다(카톡 아이디 등은 원본 비교).
+  const contactNorm = normalizePhone(contact);
+  const matchCol = contactNorm ? "contact_norm" : "contact";
+  const matchVal = contactNorm || contact;
+
+  const sb = createSupabaseAdminClient();
+  const { data: existing } = await sb
+    .from("customers")
+    .select("id")
+    .eq(matchCol, matchVal)
+    .maybeSingle();
+  if (existing) {
+    return { ok: true, id: (existing as { id: string }).id, existed: true };
+  }
+
+  const { data: created, error } = await sb
+    .from("customers")
+    .insert({
+      name,
+      contact,
+      contact_norm: contactNorm,
+      email: (input.email ?? "").trim(),
+      referral_source: (input.referral ?? "").trim(),
+      memo: (input.memo ?? "").trim(),
+    })
+    .select("id")
+    .single();
+
+  if (error?.code === "23505") {
+    // 동시에 같은 연락처가 등록됨 → 그 행을 기존 고객으로 취급한다.
+    const { data: raced } = await sb
+      .from("customers")
+      .select("id")
+      .eq(matchCol, matchVal)
+      .maybeSingle();
+    const racedId = (raced as { id: string } | null)?.id;
+    if (racedId) return { ok: true, id: racedId, existed: true };
+  }
+  if (error || !created) return { ok: false, error: "DB" };
+
+  revalidatePath("/admin/customers");
+  return { ok: true, id: (created as { id: string }).id, existed: false };
+}
+
+/** 고객 부분 갱신. 전달된 필드만 바꾼다(연락처는 식별 키라 여기서 바꾸지 않음). */
+export async function updateCustomer(input: {
+  customerId: string;
+  name?: string;
+  email?: string;
+  referral?: string;
+  memo?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.customerId) return { ok: false, error: "INVALID" };
+
+  const patch: Record<string, string> = {};
+  if (input.name !== undefined) patch.name = input.name.trim();
+  if (input.email !== undefined) patch.email = input.email.trim();
+  if (input.referral !== undefined) patch.referral_source = input.referral.trim();
+  if (input.memo !== undefined) patch.memo = input.memo.trim();
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("customers")
+    .update(patch)
+    .eq("id", input.customerId);
+  if (error) return { ok: false, error: "DB" };
+
+  revalidatePath("/admin/customers");
+  return { ok: true };
+}
+
+/** 연락처로 고객 1명 찾기 (예약 폼의 전화번호 매칭용). 없으면 null. */
+export async function findCustomerByContact(contact: string): Promise<{
+  id: string;
+  name: string;
+  contact: string;
+  email: string;
+  referral_source: string;
+} | null> {
+  await assertAdmin();
+  const c = (contact ?? "").trim();
+  if (!c) return null;
+
+  const norm = normalizePhone(c);
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("customers")
+    .select("id, name, contact, email, referral_source")
+    .eq(norm ? "contact_norm" : "contact", norm || c)
+    .maybeSingle();
+  return (
+    (data as {
+      id: string;
+      name: string;
+      contact: string;
+      email: string;
+      referral_source: string;
+    } | null) ?? null
+  );
+}
+
 export async function saveCustomerMemo(input: {
   customerId: string;
   memo: string;
 }): Promise<ActionResult> {
-  await assertAdmin();
-  const sb = createSupabaseAdminClient();
-  const { error } = await sb
-    .from("customers")
-    .update({ memo: input.memo })
-    .eq("id", input.customerId);
-  if (error) return { ok: false, error: "DB" };
-  revalidatePath("/admin/customers");
-  return { ok: true };
+  return updateCustomer({ customerId: input.customerId, memo: input.memo });
 }
 
 // ── 갤러리 ───────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import type { Dict, Locale } from "@/lib/i18n";
 import { referralLabel } from "@/lib/i18n";
 import type { BookingStatus } from "@/lib/types";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { saveCustomerMemo } from "@/app/admin/actions";
+import { createCustomer, saveCustomerMemo } from "@/app/admin/actions";
 
 export interface CustomerRow {
   id: string;
@@ -16,6 +16,7 @@ export interface CustomerRow {
   referral_source: string;
   memo: string;
   visits: number;
+  isReturning: boolean;
   lastVisitIso: string | null;
   totalSpent: number;
   history: {
@@ -37,24 +38,127 @@ export function CustomersManager({
   locale: Locale;
   currency: string;
 }) {
-  if (rows.length === 0) {
-    return (
-      <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
-        {dict.admin.noCustomers}
-      </p>
-    );
-  }
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  const shown = needle
+    ? rows.filter(
+        (r) =>
+          r.name.toLowerCase().includes(needle) ||
+          r.contact.toLowerCase().includes(needle),
+      )
+    : rows;
+
   return (
     <div className="space-y-3">
-      {rows.map((r) => (
-        <CustomerCard
-          key={r.id}
-          row={r}
-          dict={dict}
-          locale={locale}
-          currency={currency}
-        />
-      ))}
+      <RegisterCustomer dict={dict} />
+
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder={dict.admin.searchByPhone}
+        inputMode="search"
+        className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
+      />
+
+      {rows.length === 0 ? (
+        <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+          {dict.admin.noCustomers}
+        </p>
+      ) : shown.length === 0 ? (
+        <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+          {dict.admin.noSearchResult}
+        </p>
+      ) : (
+        shown.map((r) => (
+          <CustomerCard
+            key={r.id}
+            row={r}
+            dict={dict}
+            locale={locale}
+            currency={currency}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
+/** 관리자가 손님을 직접 등록하는 폼. 연락처가 식별 키라 이름+연락처는 필수. */
+function RegisterCustomer({ dict }: { dict: Dict }) {
+  const a = dict.admin;
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  const field =
+    "w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400";
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          setOpen((v) => !v);
+          setMsg("");
+        }}
+        className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white"
+      >
+        {open ? "\u00d7" : "+"} {a.registerCustomer}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-2 rounded-2xl border border-brand-100 bg-white p-3">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={a.customerName}
+            className={field}
+          />
+          <input
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder={a.customerContact}
+            inputMode="tel"
+            className={field}
+          />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={a.customerEmail}
+            inputMode="email"
+            className={field}
+          />
+          {msg && <p className="text-xs text-amber-600">{msg}</p>}
+          <button
+            disabled={pending || !name.trim() || !contact.trim()}
+            onClick={() =>
+              startTransition(async () => {
+                setMsg("");
+                const res = await createCustomer({ name, contact, email });
+                if (!res.ok) {
+                  setMsg(a.saveErr);
+                  return;
+                }
+                if (res.existed) {
+                  setMsg(a.duplicateContact);
+                  return;
+                }
+                setName("");
+                setContact("");
+                setEmail("");
+                setOpen(false);
+                router.refresh();
+              })
+            }
+            className="rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            {a.saveCustomer}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -109,6 +213,15 @@ function CustomerCard({
         <div>
           <p className="font-bold text-brand-900">
             {row.name || row.contact}{" "}
+            <span
+              className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                row.isReturning
+                  ? "bg-brand-100 text-brand-700"
+                  : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              {row.isReturning ? a.badgeReturning : a.badgeNew}
+            </span>{" "}
             <span className="text-xs font-normal text-muted">
               · {row.visits}
               {a.visits}

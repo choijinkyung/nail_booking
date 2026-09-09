@@ -44,7 +44,6 @@ export function BookingWizard(props: Props) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [referral, setReferral] = useState("");
   const [refFile, setRefFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
@@ -92,7 +91,8 @@ export function BookingWizard(props: Props) {
     if (s === 2) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
-      if (password.trim().length < 4) return dict.booking.errPassword;
+      // 이름+전화번호로 조회하므로 번호에 숫자가 있어야 한다.
+      if (!/\d/.test(contact)) return dict.booking.errContactDigits;
     }
     return "";
   }
@@ -149,7 +149,6 @@ export function BookingWizard(props: Props) {
         customer_name: name,
         customer_contact: contact,
         customer_email: email,
-        customer_password: password,
         referral_source: referral,
         reference_url,
         reference_path,
@@ -358,8 +357,14 @@ export function BookingWizard(props: Props) {
               <input
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 className={inputClass}
               />
+              <p className="mt-1 text-xs text-muted">
+                {dict.booking.contactHint}
+              </p>
             </Field>
             <Field label={dict.booking.email}>
               <input
@@ -369,15 +374,6 @@ export function BookingWizard(props: Props) {
                 inputMode="email"
                 className={inputClass}
                 autoComplete="email"
-              />
-            </Field>
-            <Field label={`${dict.booking.password} *`}>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-                className={inputClass}
               />
             </Field>
             <Field label={dict.referral.label}>
@@ -674,8 +670,6 @@ function mapError(code: string, dict: Dict): string {
       return dict.booking.errPreferred;
     case "NO_ALTERNATIVE":
       return dict.booking.errAlternative;
-    case "PASSWORD":
-      return dict.booking.errPassword;
     case "SLOT_TAKEN":
       return dict.booking.noSlots;
     case "SETUP":

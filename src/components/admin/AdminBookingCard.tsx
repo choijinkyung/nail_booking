@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { bookingLink } from "@/lib/shareLinks";
+import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
   completeBooking,
@@ -21,6 +23,7 @@ interface Props {
   dict: Dict;
   locale: Locale;
   currency: string;
+  baseUrl: string;
 }
 
 // 임시: 확인 대기의 '다른 시간 제안 / 가능시간 안내' UI를 화면에서 숨김 (코드는 유지)
@@ -40,6 +43,7 @@ export function AdminBookingCard({
   dict,
   locale,
   currency,
+  baseUrl,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -124,6 +128,15 @@ export function AdminBookingCard({
           <p className="mt-1 text-xs tracking-widest text-brand-400">
             {booking.code}
           </p>
+          {/* 코드만으로 열리는 링크 — 관리자가 대신 잡아준 예약도 손님이 확인할 수 있다 */}
+          <span className="mt-1.5 flex justify-end">
+            <ShareButtons
+              url={bookingLink(baseUrl, booking.code)}
+              text={a.shareMsgBooking}
+              dict={dict}
+              compact
+            />
+          </span>
         </div>
       </div>
 
