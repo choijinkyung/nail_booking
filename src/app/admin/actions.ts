@@ -708,24 +708,48 @@ export async function blockRange(input: {
     .select("starts_at, status")
     .in("starts_at", isos);
   if (selErr) return { ok: false, error: "DB" };
-  const booked = (existing as { starts_at: string; status: string }[] | null)
-    ?.filter((s) => s.status === "booked");
-  if (booked && booked.length > 0) {
+  const existingRows =
+    (existing as { starts_at: string; status: string }[] | null) ?? [];
+  const booked = existingRows.filter((s) => s.status === "booked");
+  if (booked.length > 0) {
     return { ok: false, error: "SLOT_TAKEN" };
   }
+  // 롤백 시 원상복구하려면, 우리가 새로 만든 행과 원래 있던 행을 구분해야 한다.
+  const priorStatusByIso = new Map(
+    existingRows.map((r) => [r.starts_at, r.status]),
+  );
 
   const group = crypto.randomUUID();
   const note_ko = (input.reasonKo ?? "").trim();
   const note_en = (input.reasonEn ?? "").trim();
 
-  // 이후 어느 단계에서 실패하더라도 이 그룹으로 만든 blocked 행만 되돌린다.
-  // (booked 로 확정된 행은 애초에 이 그룹에 속하지 않으므로 삭제 대상이 아니다.)
+  // 이후 어느 단계에서 실패하더라도 이 그룹이 만든 변경만 되돌린다.
+  // 새로 만든 행은 삭제하고, 원래 있던 행은 이전 상태(대개 open)로 되돌린다.
+  // 통째로 삭제하면 관리자가 열어둔 예약 가능 시간이 사라져 버린다.
+  // (booked 로 확정된 행은 이 그룹에 속하지 않으므로 어느 쪽에도 걸리지 않는다.)
   async function rollback() {
-    await sb
-      .from("availability_slots")
-      .delete()
-      .eq("block_group", group)
-      .eq("status", "blocked");
+    const preexisting = isos.filter((iso) => priorStatusByIso.has(iso));
+    const created = isos.filter((iso) => !priorStatusByIso.has(iso));
+    if (created.length > 0) {
+      await sb
+        .from("availability_slots")
+        .delete()
+        .eq("block_group", group)
+        .eq("status", "blocked")
+        .in("starts_at", created);
+    }
+    for (const iso of preexisting) {
+      await sb
+        .from("availability_slots")
+        .update({
+          status: priorStatusByIso.get(iso),
+          block_group: null,
+          note_ko: "",
+          note_en: "",
+        })
+        .eq("starts_at", iso)
+        .eq("block_group", group);
+    }
   }
 
   // 2) 아직 없는 시각만 새로 생성한다. ignoreDuplicates 이므로 기존 행(특히 방금
