@@ -859,19 +859,123 @@ export async function deleteService(input: {
 // ── 설정 ─────────────────────────────────────────────────────
 
 // ── 고객 메모 ────────────────────────────────────────────────
+/**
+ * 고객 등록. `contact`(연락처)가 중복이면 기존 고객을 `existed: true` 로 반환한다.
+ * 조회-후-삽입 사이의 경쟁은 UNIQUE 위반(23505)을 잡아 재조회로 흡수한다.
+ */
+export async function createCustomer(input: {
+  name: string;
+  contact: string;
+  email?: string;
+  referral?: string;
+  memo?: string;
+}): Promise<{ ok: true; id: string; existed: boolean } | { ok: false; error: string }> {
+  await assertAdmin();
+  const name = (input.name ?? "").trim();
+  const contact = (input.contact ?? "").trim();
+  if (!name || !contact) return { ok: false, error: "INVALID" };
+
+  const sb = createSupabaseAdminClient();
+  const { data: existing } = await sb
+    .from("customers")
+    .select("id")
+    .eq("contact", contact)
+    .maybeSingle();
+  if (existing) {
+    return { ok: true, id: (existing as { id: string }).id, existed: true };
+  }
+
+  const { data: created, error } = await sb
+    .from("customers")
+    .insert({
+      name,
+      contact,
+      email: (input.email ?? "").trim(),
+      referral_source: (input.referral ?? "").trim(),
+      memo: (input.memo ?? "").trim(),
+    })
+    .select("id")
+    .single();
+
+  if (error?.code === "23505") {
+    // 동시에 같은 연락처가 등록됨 → 그 행을 기존 고객으로 취급한다.
+    const { data: raced } = await sb
+      .from("customers")
+      .select("id")
+      .eq("contact", contact)
+      .maybeSingle();
+    const racedId = (raced as { id: string } | null)?.id;
+    if (racedId) return { ok: true, id: racedId, existed: true };
+  }
+  if (error || !created) return { ok: false, error: "DB" };
+
+  revalidatePath("/admin/customers");
+  return { ok: true, id: (created as { id: string }).id, existed: false };
+}
+
+/** 고객 부분 갱신. 전달된 필드만 바꾼다(연락처는 식별 키라 여기서 바꾸지 않음). */
+export async function updateCustomer(input: {
+  customerId: string;
+  name?: string;
+  email?: string;
+  referral?: string;
+  memo?: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.customerId) return { ok: false, error: "INVALID" };
+
+  const patch: Record<string, string> = {};
+  if (input.name !== undefined) patch.name = input.name.trim();
+  if (input.email !== undefined) patch.email = input.email.trim();
+  if (input.referral !== undefined) patch.referral_source = input.referral.trim();
+  if (input.memo !== undefined) patch.memo = input.memo.trim();
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("customers")
+    .update(patch)
+    .eq("id", input.customerId);
+  if (error) return { ok: false, error: "DB" };
+
+  revalidatePath("/admin/customers");
+  return { ok: true };
+}
+
+/** 연락처로 고객 1명 찾기 (예약 폼의 전화번호 매칭용). 없으면 null. */
+export async function findCustomerByContact(contact: string): Promise<{
+  id: string;
+  name: string;
+  contact: string;
+  email: string;
+  referral_source: string;
+} | null> {
+  await assertAdmin();
+  const c = (contact ?? "").trim();
+  if (!c) return null;
+
+  const sb = createSupabaseAdminClient();
+  const { data } = await sb
+    .from("customers")
+    .select("id, name, contact, email, referral_source")
+    .eq("contact", c)
+    .maybeSingle();
+  return (
+    (data as {
+      id: string;
+      name: string;
+      contact: string;
+      email: string;
+      referral_source: string;
+    } | null) ?? null
+  );
+}
+
 export async function saveCustomerMemo(input: {
   customerId: string;
   memo: string;
 }): Promise<ActionResult> {
-  await assertAdmin();
-  const sb = createSupabaseAdminClient();
-  const { error } = await sb
-    .from("customers")
-    .update({ memo: input.memo })
-    .eq("id", input.customerId);
-  if (error) return { ok: false, error: "DB" };
-  revalidatePath("/admin/customers");
-  return { ok: true };
+  return updateCustomer({ customerId: input.customerId, memo: input.memo });
 }
 
 // ── 갤러리 ───────────────────────────────────────────────────
