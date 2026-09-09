@@ -8,6 +8,7 @@ import type { BlockSlot } from "@/lib/data";
 import { formatDuration, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { removeBlock } from "@/app/admin/actions";
 import { BlockForm } from "./BlockForm";
+import { NewBookingForm } from "./NewBookingForm";
 
 interface CalEvent {
   dayKey: string;
@@ -290,12 +291,32 @@ export function BookingCalendar({
         {/* 이 날짜에 대한 관리자 작업 */}
         <div className="mb-3 flex gap-2">
           <button
+            onClick={() => setPane((p) => (p === "booking" ? "none" : "booking"))}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            ➕ {dict.admin.newBooking}
+          </button>
+          <button
             onClick={() => setPane((p) => (p === "block" ? "none" : "block"))}
             className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-700"
           >
             ⛔ {dict.admin.addBlock}
           </button>
         </div>
+
+        {pane === "booking" && (
+          <div className="mb-3">
+            <NewBookingForm
+              dayKey={selected}
+              services={services}
+              customers={customers}
+              dict={dict}
+              locale={locale}
+              currency={currency}
+              onDone={() => setPane("none")}
+            />
+          </div>
+        )}
 
         {pane === "block" && (
           <div className="mb-3">
