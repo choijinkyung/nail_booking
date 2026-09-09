@@ -243,11 +243,17 @@ export async function createAdminBooking(input: {
       customerId = (existing as { id: string }).id;
       await sb.from("customers").update({ name, email }).eq("id", customerId);
     } else {
-      const { data: created } = await sb
+      const { data: created, error: insErr } = await sb
         .from("customers")
         .insert({ contact, name, email, referral_source: referral })
         .select("id").single();
       customerId = (created as { id: string } | null)?.id ?? null;
+      if (!customerId && insErr?.code === "23505") {
+        // 동시에 같은 연락처로 등록된 경우: 방금 다른 요청이 만든 행을 재조회해 연결한다.
+        const { data: raced } = await sb
+          .from("customers").select("id").eq("contact", contact).maybeSingle();
+        customerId = (raced as { id: string } | null)?.id ?? null;
+      }
     }
   }
 
