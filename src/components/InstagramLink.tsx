@@ -17,11 +17,11 @@ export function InstagramLink({
       rel="noreferrer"
       aria-label={label}
       title={label}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-brand-200 text-brand-900 hover:bg-brand-50"
+      className="flex w-full items-center gap-2.5 rounded-lg border border-brand-200 px-4 py-3 text-[15px] font-semibold text-brand-900 hover:bg-brand-50"
     >
       <svg
-        width="17"
-        height="17"
+        width="19"
+        height="19"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -34,6 +34,7 @@ export function InstagramLink({
         <circle cx="12" cy="12" r="3.8" />
         <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
       </svg>
+      <span>{label}</span>
     </a>
   );
 }

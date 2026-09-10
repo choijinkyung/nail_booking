@@ -3,11 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
-import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
+import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { fitFrom, sortSlots } from "@/lib/scheduling";
 import { bookingLink } from "@/lib/shareLinks";
 import { buildBookingShareText } from "@/lib/bookingShare";
+import { buildPaymentShareText } from "@/lib/paymentShare";
 import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
@@ -16,7 +17,6 @@ import {
   declineBooking,
   dismissRequest,
   proposeTimes,
-  resendPayment,
 } from "@/app/admin/actions";
 
 interface Props {
@@ -29,6 +29,10 @@ interface Props {
   shopName: string;
   location: string;
   confirmedAddress: string;
+  services: Service[];
+  paymentText: string;
+  etransferEmail: string;
+  etransferNote: string;
 }
 
 
@@ -50,6 +54,10 @@ export function AdminBookingCard({
   shopName,
   location,
   confirmedAddress,
+  services,
+  paymentText,
+  etransferEmail,
+  etransferNote,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -58,12 +66,15 @@ export function AdminBookingCard({
   const [offerSlots, setOfferSlots] = useState<string[]>([]);
   const [showChangeTime, setShowChangeTime] = useState(false);
   const [changeSlot, setChangeSlot] = useState("");
-  const [resent, setResent] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   // 시술별 최종 금액 — 실제로 받은 돈은 시술 후에야 정해진다.
   const [subtotals, setSubtotals] = useState<string[]>(() =>
     booking.services.map((l) => String(l.subtotal ?? 0)),
   );
+  // 시술 중에 추가된 항목 (예약에는 없던 것)
+  const [added, setAdded] = useState<
+    { service_id: string; quantity: number; subtotal: string }[]
+  >([]);
   const [tip, setTip] = useState("0");
   const [err, setErr] = useState("");
   const a = dict.admin;
@@ -534,6 +545,64 @@ export function AdminBookingCard({
                 />
               </li>
             ))}
+            {added.map((x, i) => {
+              const sv = services.find((v) => v.id === x.service_id);
+              return (
+                <li key={`add-${i}`} className="flex items-center gap-3 py-2">
+                  <span className="min-w-0 flex-1 text-sm text-brand-900">
+                    {sv ? (isEn ? sv.name_en : sv.name_ko) : "-"}
+                    <button
+                      onClick={() =>
+                        setAdded((prev) => prev.filter((_, j) => j !== i))
+                      }
+                      className="ml-2 text-xs text-red-600"
+                    >
+                      {dict.common.delete}
+                    </button>
+                  </span>
+                  <input
+                    value={x.subtotal}
+                    onChange={(e) =>
+                      setAdded((prev) =>
+                        prev.map((v, j) =>
+                          j === i ? { ...v, subtotal: e.target.value } : v,
+                        ),
+                      )
+                    }
+                    inputMode="decimal"
+                    aria-label={sv ? (isEn ? sv.name_en : sv.name_ko) : "added"}
+                    className="w-24 shrink-0 rounded-lg border border-brand-200 bg-white px-3 py-2 text-right text-sm"
+                  />
+                </li>
+              );
+            })}
+
+            <li className="py-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  const sv = services.find((v) => v.id === e.target.value);
+                  if (!sv) return;
+                  setAdded((prev) => [
+                    ...prev,
+                    {
+                      service_id: sv.id,
+                      quantity: 1,
+                      subtotal: String(sv.price),
+                    },
+                  ]);
+                }}
+                className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm text-muted"
+              >
+                <option value="">+ {a.addServiceLine}</option>
+                {services.map((sv) => (
+                  <option key={sv.id} value={sv.id}>
+                    {isEn ? sv.name_en : sv.name_ko}
+                  </option>
+                ))}
+              </select>
+            </li>
+
             <li className="flex items-center gap-3 py-2">
               <span className="min-w-0 flex-1 text-sm text-muted">
                 {a.tipLabel}
@@ -553,6 +622,7 @@ export function AdminBookingCard({
             <span>
               {formatMoney(
                 subtotals.reduce((sum, v) => sum + (Number(v) || 0), 0) +
+                  added.reduce((sum, x) => sum + (Number(x.subtotal) || 0), 0) +
                   (Number(tip) || 0),
                 currency,
               )}
@@ -572,6 +642,11 @@ export function AdminBookingCard({
                   completeBooking({
                     bookingId: booking.id,
                     subtotals: subtotals.map((v) => Number(v) || 0),
+                    added: added.map((x) => ({
+                      service_id: x.service_id,
+                      quantity: x.quantity,
+                      subtotal: Number(x.subtotal) || 0,
+                    })),
                     tip: Number(tip) || 0,
                   }),
                 )
@@ -607,23 +682,25 @@ export function AdminBookingCard({
               )}
             </span>
           </div>
-          <button
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const res = await resendPayment({ bookingId: booking.id });
-                if (res.ok) {
-                  setResent(true);
-                  setTimeout(() => setResent(false), 2000);
-                } else {
-                  setErr(dict.booking.errGeneric);
-                }
-              })
-            }
-            className="mt-2 w-full rounded-lg border border-brand-300 px-3 py-2 text-xs font-semibold text-brand-900 disabled:opacity-40"
-          >
-            {resent ? `✓ ${a.resent}` : `💌 ${a.resendPayment}`}
-          </button>
+          {/* 결제 안내는 메일 대신 카톡으로 — 이메일이 없는 손님이 많다 */}
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-brand-100 pt-3">
+            <span className="text-xs text-muted">{a.sharePayment}</span>
+            <ShareButtons
+              url={bookingLink(baseUrl, booking.code)}
+              text={buildPaymentShareText({
+                shopName,
+                locale,
+                currency,
+                services: booking.services,
+                tip: booking.tip ?? 0,
+                paymentText,
+                etransferEmail,
+                etransferNote,
+              })}
+              dict={dict}
+              compact
+            />
+          </div>
         </div>
       )}
 

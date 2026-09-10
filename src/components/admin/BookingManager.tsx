@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
-import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
+import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
 import { MiniCalendar } from "./MiniCalendar";
@@ -48,6 +48,10 @@ export function BookingManager({
   shopName,
   location,
   confirmedAddress,
+  services,
+  paymentText,
+  etransferEmail,
+  etransferNote,
 }: {
   bookings: BookingWithSlots[];
   openSlots: AvailabilitySlot[];
@@ -59,6 +63,10 @@ export function BookingManager({
   shopName: string;
   location: string;
   confirmedAddress: string;
+  services: Service[];
+  paymentText: string;
+  etransferEmail: string;
+  etransferNote: string;
 }) {
   const a = dict.admin;
   const nowIso = new Date().toISOString();
@@ -116,6 +124,8 @@ export function BookingManager({
   const [tab, setTab] = useState<Tab>(
     pending.length > 0 ? "pending" : "upcoming",
   );
+  // 한 번에 하나만 펼친다 — 여러 개가 동시에 열려 있으면 목록이 안 보인다.
+  const [openId, setOpenId] = useState<string | null>(null);
   const [upSel, setUpSel] = useState(today);
   const [pastSel, setPastSel] = useState(today);
   const [showOther, setShowOther] = useState(false);
@@ -132,6 +142,10 @@ export function BookingManager({
       shopName={shopName}
       location={location}
       confirmedAddress={confirmedAddress}
+      services={services}
+      paymentText={paymentText}
+      etransferEmail={etransferEmail}
+      etransferNote={etransferNote}
     />
   );
 
@@ -142,6 +156,8 @@ export function BookingManager({
       booking={b}
       locale={locale}
       currency={currency}
+      open={openId === b.id}
+      onToggle={() => setOpenId((cur) => (cur === b.id ? null : b.id))}
     >
       {card(b)}
     </CollapsibleBooking>
@@ -320,14 +336,17 @@ function CollapsibleBooking({
   booking,
   locale,
   currency,
+  open,
+  onToggle,
   children,
 }: {
   booking: BookingWithSlots;
   locale: Locale;
   currency: string;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
   const iso = bookingIso(booking);
   const services = booking.services
     .map((l) => (locale === "en" ? l.name_en : l.name_ko))
@@ -342,7 +361,7 @@ function CollapsibleBooking({
       <div>
         {children}
         <button
-          onClick={() => setOpen(false)}
+          onClick={onToggle}
           className="mt-1 w-full py-2 text-center text-xs text-muted"
         >
           {"\u2303"}
@@ -353,7 +372,7 @@ function CollapsibleBooking({
 
   return (
     <button
-      onClick={() => setOpen(true)}
+      onClick={onToggle}
       className="flex w-full items-center gap-3 border-b border-brand-100 py-3 text-left last:border-0"
     >
       <span className="min-w-0 flex-1">

@@ -39,10 +39,6 @@ export default async function LandingPage() {
               {heroTagline}
             </h1>
             <div className="mt-1.5 flex shrink-0 items-center gap-2">
-              <InstagramLink
-                href="https://www.instagram.com/zena_12.7"
-                label={dict.landing.viewGallery}
-              />
               <Link
                 href="/status"
                 className="rounded-md border border-brand-200 px-2.5 py-1 text-[13px] font-medium text-brand-900 hover:bg-brand-50"
@@ -59,7 +55,16 @@ export default async function LandingPage() {
           )}
         </section>
 
-        {/* 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
+        {/* 작업 사진 — 갤러리가 비어 있는 동안 유일한 포트폴리오라
+            안내문에 밀리지 않게 히어로 바로 아래에 둔다. */}
+        <section className="mt-6">
+          <InstagramLink
+            href="https://www.instagram.com/zena_12.7"
+            label={dict.landing.viewGallery}
+          />
+        </section>
+
+        {/* 예약시간 유동 안내 */}
         <section className="mt-8">
           <div className="space-y-2">
             <NoticeBanner

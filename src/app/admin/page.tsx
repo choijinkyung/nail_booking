@@ -1,7 +1,12 @@
 import { requireAdminPage } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
-import { getAllBookings, getOpenSlots, getSettings } from "@/lib/data";
+import {
+  getActiveServices,
+  getAllBookings,
+  getOpenSlots,
+  getSettings,
+} from "@/lib/data";
 import { slotDayKey } from "@/lib/format";
 import { getSiteUrl } from "@/lib/url";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -14,12 +19,14 @@ export default async function AdminDashboardPage() {
   await requireAdminPage();
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const [bookings, openSlots, settings, baseUrl] = await Promise.all([
-    getAllBookings(),
-    getOpenSlots(),
-    getSettings(),
-    getSiteUrl(),
-  ]);
+  const [bookings, openSlots, settings, baseUrl, activeServices] =
+    await Promise.all([
+      getAllBookings(),
+      getOpenSlots(),
+      getSettings(),
+      getSiteUrl(),
+      getActiveServices(),
+    ]);
   const today = slotDayKey(new Date().toISOString());
 
   return (
@@ -39,6 +46,12 @@ export default async function AdminDashboardPage() {
         shopName={locale === "en" ? settings.shop_name_en : settings.shop_name_ko}
         location={locale === "en" ? settings.location_en : settings.location_ko}
         confirmedAddress={settings.confirmed_address}
+        services={activeServices}
+        paymentText={locale === "en" ? settings.payment_en : settings.payment_ko}
+        etransferEmail={settings.etransfer_email}
+        etransferNote={
+          locale === "en" ? settings.etransfer_note_en : settings.etransfer_note_ko
+        }
       />
     </AdminShell>
   );

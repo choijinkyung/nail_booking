@@ -456,48 +456,6 @@ export async function proposeTimes(input: {
   return { ok: true };
 }
 
-/** 시술 완료 후 결제 안내(금액+e-transfer)를 다시 발송 */
-export async function resendPayment(input: {
-  bookingId: string;
-}): Promise<ActionResult> {
-  await assertAdmin();
-  const sb = createSupabaseAdminClient();
-  const { data } = await sb
-    .from("bookings")
-    .select("*")
-    .eq("id", input.bookingId)
-    .single();
-  const b = data as Booking | null;
-  if (!b) return { ok: false, error: "DB" };
-  if (b.status !== "completed") return { ok: false, error: "NOT_COMPLETED" };
-  if (!b.customer_email) return { ok: false, error: "NO_EMAIL" };
-
-  try {
-    const [siteUrl, settingsRes] = await Promise.all([
-      getSiteUrl(),
-      sb.from("settings").select("*").eq("id", 1).single(),
-    ]);
-    const s = (settingsRes.data ?? {}) as Record<string, string>;
-    const cur = s.currency || "CAD";
-    const isEn = (await getLocale()) === "en";
-    const finalPrice = Number(b.final_price ?? b.estimated_total) || 0;
-    await notifyCustomerCompleted({
-      to: b.customer_email,
-      code: b.code,
-      serviceText: formatMoney(finalPrice, cur),
-      tipText: formatMoney(b.tip ?? 0, cur),
-      totalText: formatMoney(finalPrice + (b.tip ?? 0), cur),
-      paymentText: (isEn ? s.payment_en : s.payment_ko) || "",
-      etransferEmail: s.etransfer_email || "",
-      etransferNote: (isEn ? s.etransfer_note_en : s.etransfer_note_ko) || "",
-      siteUrl,
-    });
-  } catch (err) {
-    console.error("[resendPayment] 실패:", err);
-    return { ok: false, error: "EMAIL" };
-  }
-  return { ok: true };
-}
 
 /** 손님의 요청을 반려(변경 없이 요청만 해제). 원하면 안내 메시지를 손님에게 발송. */
 export async function dismissRequest(input: {
@@ -584,6 +542,8 @@ export async function completeBooking(input: {
   bookingId: string;
   /** services 순서대로의 최종 금액 */
   subtotals: number[];
+  /** 예약에 없던 시술을 시술 중에 추가한 경우 */
+  added?: { service_id: string; quantity: number; subtotal: number }[];
   tip: number;
 }): Promise<ActionResult> {
   await assertAdmin();
@@ -603,6 +563,33 @@ export async function completeBooking(input: {
       subtotal: Math.max(0, Number(input.subtotals?.[i]) || 0),
     }),
   );
+
+  // 추가된 시술은 이름·단위를 DB 에서 읽어 붙인다(클라이언트 값은 금액만 신뢰).
+  const added = (input.added ?? []).filter((x) => x?.service_id);
+  if (added.length > 0) {
+    const { data: svcRows } = await sb
+      .from("services")
+      .select("*")
+      .in("id", added.map((x) => x.service_id));
+    const byId = new Map(
+      ((svcRows as Service[]) ?? []).map((sv) => [sv.id, sv]),
+    );
+    for (const x of added) {
+      const sv = byId.get(x.service_id);
+      if (!sv) continue;
+      lines.push({
+        service_id: sv.id,
+        name_ko: sv.name_ko,
+        name_en: sv.name_en,
+        unit: sv.unit,
+        unit_price: Number(sv.price),
+        duration_min: Number(sv.duration_min) || 0,
+        quantity: Math.max(1, Math.min(20, Math.floor(x.quantity || 1))),
+        subtotal: Math.max(0, Number(x.subtotal) || 0),
+      });
+    }
+  }
+
   const finalPrice = lines.reduce((sum, l) => sum + l.subtotal, 0);
 
   const { data, error } = await sb
