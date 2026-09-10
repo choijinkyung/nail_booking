@@ -28,75 +28,86 @@ export function SettingsForm({
     "w-full rounded-md border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="space-y-4 pb-4">
       <LogoUploader logoUrl={settings.logo_url} dict={dict} />
 
       <form action={action} className="space-y-5">
-        <Group title={a.shopName}>
-          <Bi>
-            <Text name="shop_name_ko" label={a.ko} def={settings.shop_name_ko} cls={input} />
-            <Text name="shop_name_en" label={a.en} def={settings.shop_name_en} cls={input} />
-          </Bi>
-        </Group>
+        <Section title={a.secShop} defaultOpen>
+          <Group title={a.shopName}>
+            <Bi>
+              <Text name="shop_name_ko" label={a.ko} def={settings.shop_name_ko} cls={input} />
+              <Text name="shop_name_en" label={a.en} def={settings.shop_name_en} cls={input} />
+            </Bi>
+          </Group>
+          <Group title={a.heroTagline}>
+            <Text name="hero_tagline_ko" label={a.ko} def={settings.hero_tagline_ko} cls={input} />
+            <Text name="hero_tagline_en" label={a.en} def={settings.hero_tagline_en} cls={input} />
+          </Group>
+          <Group title={a.heroSub}>
+            <Area name="hero_sub_ko" label={a.ko} def={settings.hero_sub_ko} cls={input} />
+            <Area name="hero_sub_en" label={a.en} def={settings.hero_sub_en} cls={input} />
+          </Group>
+        </Section>
 
-        <Group title={a.heroTagline}>
-          <Text name="hero_tagline_ko" label={a.ko} def={settings.hero_tagline_ko} cls={input} />
-          <Text name="hero_tagline_en" label={a.en} def={settings.hero_tagline_en} cls={input} />
-        </Group>
+        <Section title={a.secNotices}>
+          <Group title={a.scheduleNote}>
+            <Area name="schedule_note_ko" label={a.ko} def={settings.schedule_note_ko} cls={input} />
+            <Area name="schedule_note_en" label={a.en} def={settings.schedule_note_en} cls={input} />
+          </Group>
+          <Group title={a.notice}>
+            <Area name="notice_ko" label={a.ko} def={settings.notice_ko} cls={input} />
+            <Area name="notice_en" label={a.en} def={settings.notice_en} cls={input} />
+          </Group>
+        </Section>
 
-        <Group title={a.heroSub}>
-          <Area name="hero_sub_ko" label={a.ko} def={settings.hero_sub_ko} cls={input} />
-          <Area name="hero_sub_en" label={a.en} def={settings.hero_sub_en} cls={input} />
-        </Group>
+        <Section title={a.secMessages}>
+          <p className="mb-3 text-xs text-muted">{a.secMessagesHint}</p>
+          <Group title={a.msgInvite}>
+            <Area name="msg_invite" label="" def={settings.msg_invite} cls={input} />
+          </Group>
+          <Group title={a.msgConfirmed}>
+            <Area name="msg_confirmed" label="" def={settings.msg_confirmed} cls={input} />
+          </Group>
+          <Group title={a.msgChanged}>
+            <Area name="msg_changed" label="" def={settings.msg_changed} cls={input} />
+          </Group>
+          <Group title={a.msgDeclined}>
+            <Area name="msg_declined" label="" def={settings.msg_declined} cls={input} />
+          </Group>
+          <Group title={a.msgCancelled}>
+            <Area name="msg_cancelled" label="" def={settings.msg_cancelled} cls={input} />
+          </Group>
+        </Section>
 
-        <Group title={`${a.scheduleNote}`}>
-          <Area name="schedule_note_ko" label={a.ko} def={settings.schedule_note_ko} cls={input} />
-          <Area name="schedule_note_en" label={a.en} def={settings.schedule_note_en} cls={input} />
-        </Group>
+        <Section title={a.secLocation}>
+          <Group title={a.location}>
+            <Area name="location_ko" label={a.ko} def={settings.location_ko} cls={input} />
+            <Area name="location_en" label={a.en} def={settings.location_en} cls={input} />
+          </Group>
+          <Group title={a.confirmedAddress}>
+            <p className="mb-2 text-xs text-muted">{a.confirmedAddressHint}</p>
+            <Area name="confirmed_address" label="" def={settings.confirmed_address} cls={input} />
+          </Group>
+        </Section>
 
-      <Group title={a.location}>
-        <Area name="location_ko" label={a.ko} def={settings.location_ko} cls={input} />
-        <Area name="location_en" label={a.en} def={settings.location_en} cls={input} />
-      </Group>
-
-      <Group title={a.emailCheck}>
-        <p className="mb-2 text-xs text-muted">{a.emailCheckHint}</p>
-        <EmailCheck dict={dict} />
-      </Group>
-
-      <Group title={a.confirmedAddress}>
-        <p className="mb-2 text-xs text-muted">{a.confirmedAddressHint}</p>
-        <Area
-          name="confirmed_address"
-          label={a.confirmedAddress}
-          def={settings.confirmed_address}
-          cls={input}
-        />
-      </Group>
-
-      <Group title={a.notice}>
-        <Area name="notice_ko" label={a.ko} def={settings.notice_ko} cls={input} />
-        <Area name="notice_en" label={a.en} def={settings.notice_en} cls={input} />
-      </Group>
-
-      <Group title={a.paymentInfo}>
-        <Area name="payment_ko" label={a.ko} def={settings.payment_ko} cls={input} />
-        <Area name="payment_en" label={a.en} def={settings.payment_en} cls={input} />
-      </Group>
-
-      <Group title={a.etransferEmail}>
-        <Text name="etransfer_email" label="" def={settings.etransfer_email} cls={input} type="email" />
-        <div className="mt-2">
-          <Bi>
-            <Area name="etransfer_note_ko" label={`${a.etransferNote} (${a.ko})`} def={settings.etransfer_note_ko} cls={input} />
-            <Area name="etransfer_note_en" label={`${a.etransferNote} (${a.en})`} def={settings.etransfer_note_en} cls={input} />
-          </Bi>
-        </div>
-      </Group>
-
-      <Group title={a.currency}>
-        <Text name="currency" label="" def={settings.currency} cls={input} />
-      </Group>
+        <Section title={a.secPayment}>
+          <Group title={a.paymentInfo}>
+            <Area name="payment_ko" label={a.ko} def={settings.payment_ko} cls={input} />
+            <Area name="payment_en" label={a.en} def={settings.payment_en} cls={input} />
+          </Group>
+          <Group title={a.etransferEmail}>
+            <Text name="etransfer_email" label="" def={settings.etransfer_email} cls={input} type="email" />
+            <div className="mt-2">
+              <Bi>
+                <Area name="etransfer_note_ko" label={`${a.etransferNote} (${a.ko})`} def={settings.etransfer_note_ko} cls={input} />
+                <Area name="etransfer_note_en" label={`${a.etransferNote} (${a.en})`} def={settings.etransfer_note_en} cls={input} />
+              </Bi>
+            </div>
+          </Group>
+          <Group title={a.currency}>
+            <Text name="currency" label="" def={settings.currency} cls={input} />
+          </Group>
+        </Section>
 
       <div className="sticky bottom-20 z-10">
         {state?.ok && (
@@ -113,6 +124,11 @@ export function SettingsForm({
         </button>
       </div>
       </form>
+
+      <Section title={a.emailCheck}>
+        <p className="mb-2 text-xs text-muted">{a.emailCheckHint}</p>
+        <EmailCheck dict={dict} />
+      </Section>
     </div>
   );
 }
@@ -286,5 +302,36 @@ function EmailCheck({ dict }: { dict: Dict }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** 설정 한 묶음. 기본은 접혀 있어 화면이 한눈에 들어온다. */
+function Section({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-lg border border-brand-100 bg-white"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-bold text-brand-900">
+        {title}
+        <span
+          className="text-brand-400 transition-transform group-open:rotate-180"
+          aria-hidden
+        >
+          {"\u2304"}
+        </span>
+      </summary>
+      <div className="space-y-4 border-t border-brand-100 px-4 py-4">
+        {children}
+      </div>
+    </details>
   );
 }

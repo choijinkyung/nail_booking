@@ -53,6 +53,7 @@ export function BookingManager({
   shopName,
   location,
   confirmedAddress,
+  noticeTemplates,
   services,
   blocks,
   customers,
@@ -70,6 +71,8 @@ export function BookingManager({
   shopName: string;
   location: string;
   confirmedAddress: string;
+  /** 설정에서 사장님이 쓴 안내 첫 줄 (비어 있으면 기본 문구) */
+  noticeTemplates: Record<NoticeKind, string>;
   services: Service[];
   blocks: BlockSlot[];
   customers: PickerCustomer[];
@@ -214,6 +217,7 @@ export function BookingManager({
                           noticeBooking.estimated_total) +
                         (noticeBooking.tip ?? 0),
                       message: noticeBooking.admin_message ?? "",
+                      headline: noticeTemplates[notice.kind],
                     })
               }
               dict={dict}

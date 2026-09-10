@@ -73,13 +73,20 @@ export function ShareButtons({
 export function ShareLinks({
   baseUrl,
   dict,
+  inviteText,
 }: {
   baseUrl: string;
   dict: Dict;
+  /** 설정에서 쓴 인사말. 비어 있으면 기본 문구 */
+  inviteText?: string;
 }) {
   const a = dict.admin;
   const rows = [
-    { label: a.shareBook, url: homeLink(baseUrl), text: a.shareMsgBook },
+    {
+      label: a.shareBook,
+      url: homeLink(baseUrl),
+      text: (inviteText ?? "").trim() || a.shareMsgBook,
+    },
     { label: a.shareGallery, url: galleryLink(baseUrl), text: a.shareMsgGallery },
   ];
 

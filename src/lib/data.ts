@@ -42,6 +42,11 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: "CAD",
   booking_window_days: 14,
   confirmed_address: "",
+  msg_invite: "",
+  msg_confirmed: "",
+  msg_changed: "",
+  msg_declined: "",
+  msg_cancelled: "",
   updated_at: "",
 };
 

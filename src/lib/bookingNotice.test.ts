@@ -57,3 +57,21 @@ describe("buildBookingNoticeText", () => {
     expect(t).toContain("One Color");
   });
 });
+
+describe("설정에서 쓴 문구", () => {
+  it("첫 줄을 사장님 문구로 바꾼다", () => {
+    const t = buildBookingNoticeText({
+      ...base,
+      kind: "confirmed",
+      headline: "예약 잡혔어요! 기다릴게요 💛",
+    });
+    expect(t).toContain("예약 잡혔어요! 기다릴게요 💛");
+    expect(t).not.toContain("예약이 확정됐어요");
+    expect(t).toContain("09/10(목) 오후 8:00");
+  });
+
+  it("비어 있으면 기본 문구를 쓴다", () => {
+    const t = buildBookingNoticeText({ ...base, kind: "confirmed", headline: "  " });
+    expect(t).toContain("예약이 확정됐어요");
+  });
+});

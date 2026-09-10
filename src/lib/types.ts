@@ -153,5 +153,10 @@ export interface Settings {
   currency: string;
   booking_window_days: number;
   confirmed_address: string;
+  msg_invite: string;
+  msg_confirmed: string;
+  msg_changed: string;
+  msg_declined: string;
+  msg_cancelled: string;
   updated_at: string;
 }

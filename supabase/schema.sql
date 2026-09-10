@@ -256,6 +256,14 @@ alter table public.settings
 alter table public.bookings
   add column if not exists buffer_min int not null default 0;
 
+-- 손님에게 보내는 문구 (마이그레이션 20260913000000 미러)
+alter table public.settings
+  add column if not exists msg_invite text not null default '',
+  add column if not exists msg_confirmed text not null default '',
+  add column if not exists msg_changed text not null default '',
+  add column if not exists msg_declined text not null default '',
+  add column if not exists msg_cancelled text not null default '';
+
 -- ── RLS: 브라우저에서 직접 접근 차단(앱은 service_role로만 접근) ──
 alter table public.services           enable row level security;
 alter table public.availability_slots enable row level security;

@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
       <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.dashboardTitle}
       </h1>
-      <ShareLinks baseUrl={baseUrl} dict={dict} />
+      <ShareLinks baseUrl={baseUrl} dict={dict} inviteText={settings.msg_invite} />
       <BookingManager
         bookings={bookings}
         openSlots={openSlots}
@@ -50,6 +50,13 @@ export default async function AdminDashboardPage() {
         shopName={locale === "en" ? settings.shop_name_en : settings.shop_name_ko}
         location={locale === "en" ? settings.location_en : settings.location_ko}
         confirmedAddress={settings.confirmed_address}
+        noticeTemplates={{
+          confirmed: settings.msg_confirmed,
+          changed: settings.msg_changed,
+          declined: settings.msg_declined,
+          cancelled: settings.msg_cancelled,
+          completed: "",
+        }}
         services={activeServices}
         blocks={blocks}
         customers={customers.map((c) => ({

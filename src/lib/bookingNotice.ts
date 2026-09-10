@@ -66,10 +66,14 @@ export function buildBookingNoticeText(input: {
   services: ShareServiceLine[];
   total: number;
   message?: string;
+  /** 설정에서 사장님이 직접 쓴 첫 줄. 비어 있으면 기본 문구를 쓴다. */
+  headline?: string;
 }): string {
   const isEn = input.locale === "en";
   const pick = (m: { ko: string; en: string }) => (isEn ? m.en : m.ko);
-  const parts: string[] = [pick(HEADLINE[input.kind])];
+  const parts: string[] = [
+    (input.headline ?? "").trim() || pick(HEADLINE[input.kind]),
+  ];
 
   if (input.kind === "confirmed" || input.kind === "changed") {
     parts.push("");
