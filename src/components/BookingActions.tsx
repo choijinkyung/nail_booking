@@ -166,13 +166,13 @@ export function BookingActions({
             onClick={() => setMode("change")}
             className="flex-1 rounded-md border border-brand-300 px-3 py-2.5 text-sm font-medium text-brand-900"
           >
-            🔄 {st.requestChange}
+            {st.requestChange}
           </button>
           <button
             onClick={() => setMode("cancel")}
             className="flex-1 rounded-md border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600"
           >
-            ❌ {st.requestCancel}
+            {st.requestCancel}
           </button>
         </div>
       )}

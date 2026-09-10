@@ -93,30 +93,6 @@ export default async function StatusPage({
               )}
             </Card>
 
-            {/* 손님 변경/취소 요청 (관리자 승인 시에만 실제 변경) */}
-            <BookingActions
-              booking={booking}
-              futureSlots={futureSlots}
-              dict={dict}
-              locale={locale}
-            />
-
-            {booking.reference_url && (
-              <Card>
-                <p className="mb-2 text-[13px] font-semibold text-brand-400">
-                  📎 {dict.booking.reference.split(" (")[0]}
-                </p>
-                <a href={booking.reference_url} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={booking.reference_url}
-                    alt="reference"
-                    className="h-32 w-32 rounded-lg border border-brand-100 object-cover"
-                  />
-                </a>
-              </Card>
-            )}
-
             {/* 확정 시간 */}
             {booking.status === "confirmed" && booking.confirmed_slot && (
               <Card className="border-green-200 bg-green-50/60">
@@ -125,18 +101,6 @@ export default async function StatusPage({
                 </p>
                 <p className="mt-1 text-lg font-bold text-green-800">
                   {formatDateTime(booking.confirmed_slot.starts_at, locale)}
-                </p>
-              </Card>
-            )}
-
-            {/* 안내 메시지 */}
-            {booking.admin_message && (
-              <Card>
-                <p className="text-[13px] font-semibold text-brand-400">
-                  {st.messageFromShop}
-                </p>
-                <p className="mt-1 whitespace-pre-line text-sm text-brand-900">
-                  {booking.admin_message}
                 </p>
               </Card>
             )}
@@ -244,6 +208,42 @@ export default async function StatusPage({
                 )}
               </Card>
             )}
+            {/* 안내 메시지 */}
+            {booking.admin_message && (
+              <Card>
+                <p className="text-[13px] font-semibold text-brand-400">
+                  {st.messageFromShop}
+                </p>
+                <p className="mt-1 whitespace-pre-line text-sm text-brand-900">
+                  {booking.admin_message}
+                </p>
+              </Card>
+            )}
+
+            {/* 손님 변경/취소 요청 (관리자 승인 시에만 실제 변경) */}
+            <BookingActions
+              booking={booking}
+              futureSlots={futureSlots}
+              dict={dict}
+              locale={locale}
+            />
+
+            {booking.reference_url && (
+              <Card>
+                <p className="mb-2 text-[13px] font-semibold text-brand-400">
+                  {dict.booking.reference.split(" (")[0]}
+                </p>
+                <a href={booking.reference_url} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={booking.reference_url}
+                    alt="reference"
+                    className="h-32 w-32 rounded-lg border border-brand-100 object-cover"
+                  />
+                </a>
+              </Card>
+            )}
+
           </div>
         )}
       </main>

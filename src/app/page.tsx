@@ -23,16 +23,16 @@ export default async function LandingPage() {
   const location = isEn ? settings.location_en : settings.location_ko;
 
   const steps = [
-    { icon: "💅", title: dict.landing.step1Title, desc: dict.landing.step1Desc },
-    { icon: "🗓️", title: dict.landing.step2Title, desc: dict.landing.step2Desc },
-    { icon: "✅", title: dict.landing.step3Title, desc: dict.landing.step3Desc },
+    { title: dict.landing.step1Title, desc: dict.landing.step1Desc },
+    { title: dict.landing.step2Title, desc: dict.landing.step2Desc },
+    { title: dict.landing.step3Title, desc: dict.landing.step3Desc },
   ];
 
   return (
     <div className="min-h-dvh">
       <SiteHeader locale={locale} shopName={shopName} />
 
-      <main className="mx-auto max-w-md px-4 pb-28">
+      <main className="mx-auto max-w-md px-5 pb-28">
         {/* Hero — 이름과 한 줄, 그리고 바로 예약. 장식은 로고 하나로 충분하다. */}
         <section className="pt-10">
           {settings.logo_url && (
@@ -52,7 +52,7 @@ export default async function LandingPage() {
         </section>
 
         {/* 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
-        <section className="mt-6">
+        <section className="mt-8">
           <div className="space-y-2">
             <NoticeBanner
               title={isEn ? "About timing" : "예약 시간이 조정될 수 있어요"}
@@ -67,7 +67,7 @@ export default async function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section className="mt-8">
+        <section className="mt-12">
           <SectionTitle>{dict.landing.howTitle}</SectionTitle>
           <ol className="flex items-center gap-2 text-sm text-muted">
             {steps.map((s, i) => (
@@ -80,7 +80,7 @@ export default async function LandingPage() {
         </section>
 
         {/* Pricing */}
-        <section className="mt-8">
+        <section className="mt-12">
           <SectionTitle>{dict.landing.pricingTitle}</SectionTitle>
           <div>
             {services.length === 0 ? (
@@ -127,12 +127,12 @@ export default async function LandingPage() {
         </section>
 
         {/* Location */}
-        <section className="mt-8">
+        <section className="mt-12">
           <SectionTitle>{dict.landing.locationTitle}</SectionTitle>
           <p className="text-[15px] leading-relaxed text-brand-900">{location}</p>
         </section>
 
-        <section className="mt-10 flex gap-2">
+        <section className="mt-12 flex gap-2">
           {/* 갤러리 기능 임시 비활성화 — '시술 사진 보기'는 인스타그램으로 이동 */}
           <ButtonLink
             href="https://www.instagram.com/zena_12.7"

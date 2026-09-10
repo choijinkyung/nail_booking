@@ -111,6 +111,13 @@ export function AdminBookingCard({
   return (
     <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
       {/* 헤더 */}
+      {/* 이 카드에서 가장 먼저 읽어야 하는 것은 언제인가 — 맨 위에 크게 둔다 */}
+      {booking.confirmed_slot && (
+        <p className="mb-2 text-[17px] font-bold text-brand-900">
+          {formatDateTime(booking.confirmed_slot.starts_at, locale)}
+        </p>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-bold text-brand-900">{booking.customer_name}</p>
@@ -250,16 +257,9 @@ export function AdminBookingCard({
             className="h-24 w-24 rounded-lg border border-brand-100 object-cover"
           />
           <span className="mt-0.5 block text-[11px] text-muted">
-            📎 {dict.booking.reference.split(" (")[0]}
+            {dict.booking.reference.split(" (")[0]}
           </span>
         </a>
-      )}
-
-      {/* 확정 시간 (confirmed) */}
-      {booking.status === "confirmed" && booking.confirmed_slot && (
-        <p className="mt-3 rounded-md bg-green-50 p-3 text-sm font-semibold text-green-800">
-          ✅ {formatDateTime(booking.confirmed_slot.starts_at, locale)}
-        </p>
       )}
 
       {/* 요청 시간 & 확정 컨트롤 (pending) */}
@@ -318,7 +318,7 @@ export function AdminBookingCard({
               onClick={() => setShowOffer((v) => !v)}
               className="text-sm font-medium text-brand-600"
             >
-              {showOffer ? "▲" : "▼"} {a.proposeOther}
+              {showOffer ? "⌃" : "⌄"} {a.proposeOther}
             </button>
           )}
           {showOffer && (
@@ -393,7 +393,7 @@ export function AdminBookingCard({
               }
               className="flex-1 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              ✅ {notStarted ? a.completeAfterStart : a.markCompleted}
+              {notStarted ? a.completeAfterStart : a.markCompleted}
             </button>
             <button
               disabled={pending}
@@ -411,7 +411,7 @@ export function AdminBookingCard({
             onClick={() => setShowChangeTime((v) => !v)}
             className="text-sm font-medium text-brand-600"
           >
-            {showChangeTime ? "▲" : "▼"} 🕑 {a.changeTime}
+            {showChangeTime ? "⌃" : "⌄"} {a.changeTime}
           </button>
           {showChangeTime && (
             <div className="flex gap-2">

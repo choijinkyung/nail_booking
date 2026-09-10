@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, Service } from "@/lib/types";
@@ -42,6 +42,12 @@ export function BookingWizard(props: Props) {
   const [pending, startTransition] = useTransition();
 
   const [step, setStep] = useState(0);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // 단계를 넘기면 스크롤이 이전 위치에 남아 다음 화면의 중간부터 보인다.
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [step]);
   const [qty, setQty] = useState<Record<string, number>>({});
   // 1지망은 하나, 대체 시간은 여러 개(선택 사항) — 서로 다른 단계에서 고른다.
   const [preferredPick, setPreferredPick] = useState<string[]>([]);
@@ -169,8 +175,8 @@ export function BookingWizard(props: Props) {
   if (resultCode) {
     return (
       <div className="mt-6 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">
-          🎉
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-xl text-white">
+          ✓
         </div>
         <h1 className="text-xl font-bold text-brand-900">
           {dict.booking.successTitle}
@@ -191,7 +197,7 @@ export function BookingWizard(props: Props) {
             }}
             className="mt-3 text-sm font-medium text-brand-600 hover:underline"
           >
-            {copied ? dict.booking.copied : `📋 ${dict.booking.copyCode}`}
+            {copied ? dict.booking.copied : dict.booking.copyCode}
           </button>
         </div>
         <button
@@ -207,6 +213,7 @@ export function BookingWizard(props: Props) {
   // ── 위저드 ────────────────────────────────────────────────
   return (
     <div className="mt-3">
+      <div ref={topRef} className="scroll-mt-20" />
       <h1 className="text-[22px] font-bold text-brand-900">
         {dict.booking.title}
       </h1>
@@ -229,7 +236,7 @@ export function BookingWizard(props: Props) {
         </div>
       </div>
 
-      <div className="mt-4 min-h-[240px]">
+      <div className="mt-6 min-h-[280px]">
         {/* Step 0: 시술 */}
         {step === 0 && (
           <div>
