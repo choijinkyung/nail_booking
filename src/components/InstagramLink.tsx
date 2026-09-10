@@ -18,7 +18,7 @@ export function InstagramLink({
       rel="noreferrer"
       aria-label={label}
       title={label}
-      className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[#fdfceb] px-4 py-3.5 text-[15px] font-semibold text-brand-900 transition hover:bg-[#faf8e0]"
+      className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[#fbf8d9] px-4 py-3.5 text-[15px] font-semibold text-brand-900 transition hover:bg-[#f6f2c6]"
     >
       <svg
         width="19"
