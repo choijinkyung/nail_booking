@@ -2,7 +2,7 @@ import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
 import { formatDuration, formatServicePrice, unitLabel } from "@/lib/format";
-import { SiteHeader } from "@/components/SiteHeader";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { ButtonLink, NoticeBanner, SectionTitle } from "@/components/ui";
 
 export default async function LandingPage() {
@@ -13,7 +13,6 @@ export default async function LandingPage() {
     getActiveServices(),
   ]);
   const isEn = locale === "en";
-  const shopName = isEn ? settings.shop_name_en : settings.shop_name_ko;
   const heroTagline = isEn ? settings.hero_tagline_en : settings.hero_tagline_ko;
   const heroSub = isEn ? settings.hero_sub_en : settings.hero_sub_ko;
   const scheduleNote = isEn
@@ -30,25 +29,22 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-dvh">
-      <SiteHeader locale={locale} shopName={shopName} />
-
       <main className="mx-auto max-w-md px-5 pb-28">
-        {/* Hero — 이름과 한 줄, 그리고 바로 예약. 장식은 로고 하나로 충분하다. */}
-        <section className="pt-7">
-          {settings.logo_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={settings.logo_url}
-              alt=""
-              className="mb-5 h-14 w-14 rounded-md object-cover"
-            />
+        {/* Hero — 화면 맨 위가 곧 제목이고, 그 오른쪽이 언어 전환이다 */}
+        <section className="pt-6">
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-[32px] font-bold leading-tight text-brand-900">
+              {heroTagline}
+            </h1>
+            <div className="mt-1.5">
+              <LanguageToggle locale={locale} />
+            </div>
+          </div>
+          {heroSub && (
+            <p className="mt-3 max-w-[46ch] text-[15px] leading-relaxed text-muted">
+              {heroSub}
+            </p>
           )}
-          <h1 className="text-[32px] font-bold leading-tight text-brand-900">
-            {heroTagline}
-          </h1>
-          <p className="mt-3 max-w-[46ch] text-[15px] leading-relaxed text-muted">
-            {heroSub}
-          </p>
         </section>
 
         {/* 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
