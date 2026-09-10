@@ -261,7 +261,13 @@ function EmailCheck({ dict }: { dict: Dict }) {
             const res = await sendTestEmail();
             setMsg(
               res.ok
-                ? { ok: true, text: `${a.testEmailSent} ${res.to}` }
+                ? {
+                    ok: res.status === "delivered" || res.status === "sent",
+                    text:
+                      `${a.testEmailSent} ${res.to}\n` +
+                      `${a.emailStatus}: ${res.status}\n` +
+                      `${a.emailFrom}: ${res.from}`,
+                  }
                 : { ok: false, text: res.error },
             );
           })

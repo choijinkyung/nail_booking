@@ -1406,12 +1406,14 @@ export async function removeDayOff(input: {
 }
 
 /**
- * 이메일 설정 점검 — 실제로 한 통 보내보고 결과를 그대로 돌려준다.
- * 발송 실패는 조용히 넘어가도록 되어 있어(예약 처리를 막지 않으려고),
- * 설정이 잘못돼도 알 방법이 없었다. 이 액션이 그 눈을 만들어준다.
+ * 이메일 설정 점검 — 한 통 보내보고, 접수에서 끝내지 않고
+ * Resend 에 배달 상태까지 되물어 결과를 그대로 돌려준다.
+ * "보냈다(202)"와 "받은편지함에 도착했다"는 다른 얘기라서,
+ * 접수 성공만 보고하면 원인을 못 찾는다.
  */
 export async function sendTestEmail(): Promise<
-  { ok: true; to: string } | { ok: false; error: string }
+  | { ok: true; to: string; from: string; id: string; status: string }
+  | { ok: false; error: string }
 > {
   await assertAdmin();
   const key = process.env.RESEND_API_KEY ?? "";
@@ -1440,15 +1442,32 @@ export async function sendTestEmail(): Promise<
         html: "<p>이 메일이 보이면 예약 알림도 정상으로 옵니다.</p>",
       }),
     });
-    if (res.ok) return { ok: true, to };
     const body = (await res.json().catch(() => ({}))) as {
+      id?: string;
       message?: string;
       name?: string;
     };
-    return {
-      ok: false,
-      error: `${res.status} ${body.name ?? ""} ${body.message ?? ""}`.trim(),
-    };
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `${res.status} ${body.name ?? ""} ${body.message ?? ""}`.trim(),
+      };
+    }
+
+    // 접수 직후에는 아직 처리 중이라, 잠깐 기다렸다 상태를 되묻는다.
+    const id = body.id ?? "";
+    let status = "unknown";
+    if (id) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const look = await fetch(`https://api.resend.com/emails/${id}`, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const info = (await look.json().catch(() => ({}))) as {
+        last_event?: string;
+      };
+      status = info.last_event ?? "unknown";
+    }
+    return { ok: true, to, from, id, status };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
