@@ -28,6 +28,7 @@ import type {
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
 import { normalizePhone } from "@/lib/phone";
+import { isUsablePhone } from "@/lib/customerKey";
 import {
   clampWindowDays,
   plannedSlots,
@@ -246,13 +247,12 @@ export async function createAdminBooking(input: {
     email = (input.customer.email ?? "").trim();
     referral = (input.customer.referral ?? "").trim();
     if (!name || !contact) return { ok: false, error: "INVALID" };
-    // 전화번호가 있으면 정규화 키로, 없으면(카톡 아이디 등) 원본으로 매칭한다.
+    // 제대로 된 번호면 번호만으로, 자리채움 값이면 이름까지 같아야 같은 손님.
     const contactNorm = normalizePhone(contact);
-    const { data: existing } = await sb
-      .from("customers")
-      .select("id")
-      .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
-      .maybeSingle();
+    let q = sb.from("customers").select("id");
+    q = contactNorm ? q.eq("contact_norm", contactNorm) : q.eq("contact", contact);
+    if (!isUsablePhone(contact)) q = q.ilike("name", name);
+    const { data: existing } = await q.maybeSingle();
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb.from("customers").update({ name, email }).eq("id", customerId);
@@ -270,11 +270,12 @@ export async function createAdminBooking(input: {
       customerId = (created as { id: string } | null)?.id ?? null;
       if (!customerId && insErr?.code === "23505") {
         // 동시에 같은 연락처로 등록된 경우: 방금 다른 요청이 만든 행을 재조회해 연결한다.
-        const { data: raced } = await sb
-          .from("customers")
-          .select("id")
-          .eq(contactNorm ? "contact_norm" : "contact", contactNorm || contact)
-          .maybeSingle();
+        let q2 = sb.from("customers").select("id");
+        q2 = contactNorm
+          ? q2.eq("contact_norm", contactNorm)
+          : q2.eq("contact", contact);
+        if (!isUsablePhone(contact)) q2 = q2.ilike("name", name);
+        const { data: raced } = await q2.maybeSingle();
         customerId = (raced as { id: string } | null)?.id ?? null;
       }
     }
@@ -918,17 +919,17 @@ export async function createCustomer(input: {
   const name = (input.name ?? "").trim();
   const contact = (input.contact ?? "").trim();
   if (!name || !contact) return { ok: false, error: "INVALID" };
-  // 표기가 달라도 같은 번호면 같은 고객으로 본다(카톡 아이디 등은 원본 비교).
+  // 표기가 달라도 같은 번호면 같은 고객. 다만 "0" 같은 자리채움 값이면
+  // 이름까지 같아야 같은 사람으로 본다.
   const contactNorm = normalizePhone(contact);
   const matchCol = contactNorm ? "contact_norm" : "contact";
   const matchVal = contactNorm || contact;
+  const byName = !isUsablePhone(contact);
 
   const sb = createSupabaseAdminClient();
-  const { data: existing } = await sb
-    .from("customers")
-    .select("id")
-    .eq(matchCol, matchVal)
-    .maybeSingle();
+  let q0 = sb.from("customers").select("id").eq(matchCol, matchVal);
+  if (byName) q0 = q0.ilike("name", name);
+  const { data: existing } = await q0.maybeSingle();
   if (existing) {
     return { ok: true, id: (existing as { id: string }).id, existed: true };
   }
@@ -948,11 +949,9 @@ export async function createCustomer(input: {
 
   if (error?.code === "23505") {
     // 동시에 같은 연락처가 등록됨 → 그 행을 기존 고객으로 취급한다.
-    const { data: raced } = await sb
-      .from("customers")
-      .select("id")
-      .eq(matchCol, matchVal)
-      .maybeSingle();
+    let q1 = sb.from("customers").select("id").eq(matchCol, matchVal);
+    if (byName) q1 = q1.ilike("name", name);
+    const { data: raced } = await q1.maybeSingle();
     const racedId = (raced as { id: string } | null)?.id;
     if (racedId) return { ok: true, id: racedId, existed: true };
   }

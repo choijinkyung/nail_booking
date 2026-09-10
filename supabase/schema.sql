@@ -233,9 +233,16 @@ alter table public.customers
 alter table public.bookings
   add column if not exists customer_contact_norm text not null default '';
 
-create unique index if not exists customers_contact_norm_unique
+-- 고객 식별: 제대로 된 번호는 번호만으로, 자리채움 값은 이름과 묶어서 유일
+-- (마이그레이션 20260911000000 미러)
+alter table public.customers
+  drop constraint if exists customers_contact_key;
+create unique index if not exists customers_real_phone_unique
   on public.customers (contact_norm)
-  where contact_norm <> '';
+  where length(contact_norm) >= 8;
+create unique index if not exists customers_name_contact_unique
+  on public.customers (lower(name), contact)
+  where length(contact_norm) < 8;
 create index if not exists bookings_customer_contact_norm_idx
   on public.bookings (customer_contact_norm);
 create index if not exists bookings_customer_name_lower_idx

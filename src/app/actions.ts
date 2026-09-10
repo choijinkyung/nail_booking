@@ -9,6 +9,7 @@ import { notifyAdminBookingUpdate, notifyAdminNewBooking } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
 import { normalizePhone } from "@/lib/phone";
+import { isUsablePhone } from "@/lib/customerKey";
 import { findBookingCodeByNamePhone } from "@/lib/data";
 import { bookingDurationMin, canBook, fitFrom, sortSlots } from "@/lib/scheduling";
 import { generateCode } from "@/lib/code";
@@ -126,18 +127,14 @@ export async function createBooking(
   const referral = (input.referral_source ?? "").trim();
   let customerId: string | null = null;
   try {
-    // 전화번호가 있으면 정규화 키로, 없으면(카톡 아이디 등) 원본으로 매칭한다.
-    const { data: existing } = contactNorm
-      ? await sb
-          .from("customers")
-          .select("id, referral_source")
-          .eq("contact_norm", contactNorm)
-          .maybeSingle()
-      : await sb
-          .from("customers")
-          .select("id, referral_source")
-          .eq("contact", contact)
-          .maybeSingle();
+    // 제대로 된 번호면 번호만으로, 자리채움 값이면 이름까지 같아야 같은 손님이다.
+    // ("0" 같은 값에 여러 사람이 걸려 한 명으로 합쳐지는 일을 막는다)
+    let q = sb.from("customers").select("id, referral_source");
+    q = contactNorm
+      ? q.eq("contact_norm", contactNorm)
+      : q.eq("contact", contact);
+    if (!isUsablePhone(contact)) q = q.ilike("name", name);
+    const { data: existing } = await q.maybeSingle();
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb
