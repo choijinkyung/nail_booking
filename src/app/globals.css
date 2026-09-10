@@ -10,9 +10,9 @@
   --color-brand-200: #d6d5d3; /* 입력 테두리 */
   --color-brand-300: #b8b7b4;
   --color-brand-400: #737373; /* 보조 텍스트 */
-  --color-brand-500: #8a5a44;
-  --color-brand-600: #8a5a44; /* 유일한 강조색 */
-  --color-brand-700: #6e4632; /* 강조색 눌림 상태 */
+  --color-brand-500: #333331;
+  --color-brand-600: #111110; /* 강조 = 검정. 주요 버튼·선택 상태에만 */
+  --color-brand-700: #333331; /* 눌림 상태 */
   --color-brand-800: #1c1917; /* 제목 */
   --color-brand-900: #111110;
 

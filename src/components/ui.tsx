@@ -76,27 +76,36 @@ export function ButtonLink({
   );
 }
 
-/** 경고/안내를 강조하는 배너 */
+/**
+ * 길지만 꼭 있어야 하는 안내. 기본은 접어두고 제목만 보여준다 —
+ * 랜딩에서 읽을 것과 참고할 것이 같은 무게로 쌓이지 않게 한다.
+ */
 export function NoticeBanner({
   title,
   children,
+  defaultOpen = false,
 }: {
   title: string;
   children: ReactNode;
+  defaultOpen?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-      <div className="flex gap-3">
-        <span className="text-lg leading-none" aria-hidden>
-          ⚠️
+    <details
+      open={defaultOpen}
+      className="group rounded-lg border border-brand-100 bg-white"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-[15px] font-semibold text-brand-900">
+        {title}
+        <span
+          className="shrink-0 text-brand-400 transition-transform group-open:rotate-180"
+          aria-hidden
+        >
+          ⌄
         </span>
-        <div>
-          <p className="font-bold text-amber-900">{title}</p>
-          <div className="mt-1 text-sm leading-relaxed text-amber-800 whitespace-pre-line">
-            {children}
-          </div>
-        </div>
+      </summary>
+      <div className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-muted">
+        {children}
       </div>
-    </div>
+    </details>
   );
 }

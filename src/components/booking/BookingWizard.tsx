@@ -248,22 +248,9 @@ export function BookingWizard(props: Props) {
                       <button
                         type="button"
                         onClick={() => toggleService(s)}
-                        className="flex w-full items-center gap-3 text-left"
+                        className="flex w-full items-center gap-3 py-1 text-left"
                       >
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-semibold text-brand-900">
-                            {isEn ? s.name_en : s.name_ko}
-                          </span>
-                          <span className="mt-0.5 block text-[13px] text-muted">
-                            {formatDuration(s.duration_min, locale)}
-                            {u && ` · ${formatMoney(s.price, currency)}/${u}`}
-                          </span>
-                        </span>
-                        {s.unit === "flat" && (
-                          <span className="shrink-0 font-semibold text-brand-900">
-                            {formatServicePrice(s.price, currency, s.price_from)}
-                          </span>
-                        )}
+                        {/* 체크는 왼쪽, 가격은 오른쪽 — 줄 전체가 눌린다 */}
                         <span
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] ${
                             on
@@ -272,6 +259,22 @@ export function BookingWizard(props: Props) {
                           }`}
                         >
                           ✓
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-semibold text-brand-900">
+                            {isEn ? s.name_en : s.name_ko}
+                          </span>
+                          <span className="mt-0.5 block text-[13px] text-muted">
+                            {formatDuration(s.duration_min, locale)}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right font-semibold text-brand-900">
+                          {formatServicePrice(s.price, currency, s.price_from)}
+                          {u && (
+                            <span className="block text-[12px] font-normal text-muted">
+                              /{u}
+                            </span>
+                          )}
                         </span>
                       </button>
                       {on && s.unit === "per_finger" && (

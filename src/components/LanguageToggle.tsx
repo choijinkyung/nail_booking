@@ -15,7 +15,7 @@ export function LanguageToggle({ locale }: { locale: Locale }) {
         className="rounded-full border border-brand-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-brand-900 backdrop-blur transition hover:bg-brand-50 active:scale-95"
         aria-label={`Switch language to ${other}`}
       >
-        🌐 {label}
+        {label}
       </button>
     </form>
   );

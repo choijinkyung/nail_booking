@@ -53,38 +53,24 @@ export default async function LandingPage() {
 
         {/* ⏰ 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
         <section className="mt-6">
-          <div className="rounded-lg bg-surface p-4">
-            <p className="text-sm font-bold text-brand-900">
-              {isEn ? "Please note about timing" : "예약 시간 안내 (꼭 읽어주세요)"}
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-muted whitespace-pre-line">
+          <div className="space-y-2">
+            <NoticeBanner
+              title={isEn ? "About timing" : "예약 시간이 조정될 수 있어요"}
+            >
               {scheduleNote}
-            </p>
+            </NoticeBanner>
+            <NoticeBanner title={dict.landing.noticeTitle}>{notice}</NoticeBanner>
           </div>
-        </section>
-
-        {/* ⚠️ 주의사항 강조 */}
-        <section className="mt-4">
-          <NoticeBanner title={dict.landing.noticeTitle}>{notice}</NoticeBanner>
         </section>
 
         {/* How it works */}
         <section className="mt-8">
           <SectionTitle>{dict.landing.howTitle}</SectionTitle>
-          <ol className="divide-y divide-brand-100 border-y border-brand-100">
+          <ol className="flex items-center gap-2 text-sm text-muted">
             {steps.map((s, i) => (
-              <li key={i} className="flex gap-3 py-4">
-                <span className="w-5 shrink-0 text-[15px] font-bold text-brand-600">
-                  {i + 1}
-                </span>
-                <span>
-                  <span className="block font-semibold text-brand-900">
-                    {s.title}
-                  </span>
-                  <span className="mt-0.5 block text-sm leading-relaxed text-muted">
-                    {s.desc}
-                  </span>
-                </span>
+              <li key={i} className="flex items-center gap-2">
+                {i > 0 && <span aria-hidden>›</span>}
+                <span className="text-brand-900">{s.title}</span>
               </li>
             ))}
           </ol>
