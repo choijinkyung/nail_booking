@@ -40,8 +40,12 @@ export function BookingActions({
   const inputClass =
     "w-full rounded-md border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
-  // ── 관리자가 가능시간을 안내한 경우: 손님이 선택 → 확정 ──
-  if (booking.status === "pending" && booking.proposed_slots.length > 0) {
+  // ── 사장님이 다른 시간을 제안한 경우: 손님이 골라서 확정 ──
+  // 확인 대기든 이미 확정된 예약이든 똑같이 고를 수 있다.
+  if (
+    ["pending", "confirmed"].includes(booking.status) &&
+    booking.proposed_slots.length > 0
+  ) {
     return (
       <Card className="border-brand-300">
         <p className="text-sm font-semibold text-brand-900">

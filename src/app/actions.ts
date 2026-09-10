@@ -258,7 +258,11 @@ export async function acceptProposedTime(input: {
     .single();
   const b = data as Booking | null;
   if (!b) return { ok: false, error: "NOT_FOUND" };
-  if (b.status !== "pending" || !(b.proposed_slot_ids ?? []).includes(input.slotId))
+  // 확인 대기든 이미 확정된 예약이든, 사장님이 제안한 시간이면 옮길 수 있다.
+  if (
+    !["pending", "confirmed"].includes(b.status) ||
+    !(b.proposed_slot_ids ?? []).includes(input.slotId)
+  )
     return { ok: false, error: "CLOSED" };
 
   const duration = bookingDurationMin(b.services ?? []);
@@ -306,6 +310,16 @@ export async function acceptProposedTime(input: {
   if (error) {
     await sb.from("availability_slots").update({ status: "open" }).in("id", occ);
     return { ok: false, error: "DB" };
+  }
+
+  // 이미 확정돼 있던 예약을 옮긴 경우, 쓰던 슬롯을 돌려놓는다.
+  const prevOcc = (b.occupied_slot_ids ?? []).filter((id) => !occ.includes(id));
+  if (prevOcc.length > 0) {
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .in("id", prevOcc)
+      .eq("status", "booked");
   }
 
   try {

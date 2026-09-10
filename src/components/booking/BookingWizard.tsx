@@ -26,13 +26,7 @@ interface Props {
   currency: string;
 }
 
-const STEPS = [
-  "step_service",
-  "step_time",
-  "step_alt",
-  "step_info",
-  "step_review",
-] as const;
+const STEPS = ["step_service", "step_time", "step_info", "step_review"] as const;
 
 export function BookingWizard(props: Props) {
   const { locale, dict, services, slots, notice, scheduleNote, currency } =
@@ -49,11 +43,9 @@ export function BookingWizard(props: Props) {
     topRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [step]);
   const [qty, setQty] = useState<Record<string, number>>({});
-  // 1지망은 하나, 대체 시간은 여러 개(선택 사항) — 서로 다른 단계에서 고른다.
+  // 시간은 하나만 고른다. 그 시간이 어려우면 사장님이 다른 시간을 제안한다.
   const [preferredPick, setPreferredPick] = useState<string[]>([]);
-  const [altPicks, setAltPicks] = useState<string[]>([]);
   const preferred = preferredPick[0] ?? "";
-  const alts = altPicks.filter((id) => id !== preferred);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
@@ -98,8 +90,7 @@ export function BookingWizard(props: Props) {
   function validateStep(s: number): string {
     if (s === 0 && selectedServices.length === 0) return dict.booking.errService;
     if (s === 1 && !preferred) return dict.booking.errPreferred;
-    // s === 2 (대체 시간)는 선택 사항이라 검증하지 않는다.
-    if (s === 3) {
+    if (s === 2) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
       // 이름+전화번호로 조회하므로 번호에 숫자가 있어야 한다.
@@ -156,7 +147,7 @@ export function BookingWizard(props: Props) {
           quantity: qty[s.id],
         })),
         preferred_slot_id: preferred,
-        alternative_slot_ids: alts,
+        alternative_slot_ids: [],
         customer_name: name,
         customer_contact: contact,
         customer_email: email,
@@ -340,40 +331,8 @@ export function BookingWizard(props: Props) {
           </div>
         )}
 
-        {/* Step 2: 대체 시간 — 선택 사항 */}
+        {/* Step 2: 정보 */}
         {step === 2 && (
-          <div>
-            <div className="mb-1 flex items-center gap-2">
-              <p className="text-sm font-semibold text-brand-900">
-                {dict.booking.pickAlts}
-              </p>
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
-                {dict.booking.optional}
-              </span>
-            </div>
-            <p className="mb-3 text-xs text-muted">{dict.booking.pickAltsHint}</p>
-            <TimePicker
-              slots={slots.filter((s) => s.id !== preferred)}
-              durationMin={totalDuration || 30}
-              selected={altPicks}
-              onChange={setAltPicks}
-              dict={dict}
-              locale={locale}
-            />
-            <button
-              onClick={() => {
-                setAltPicks([]);
-                setStep(3);
-              }}
-              className="mt-4 w-full rounded-md border border-brand-200 px-4 py-2.5 text-sm font-medium text-muted"
-            >
-              {dict.booking.skipAlts}
-            </button>
-          </div>
-        )}
-
-        {/* Step 3: 정보 */}
-        {step === 3 && (
           <div className="space-y-4">
             {/* 방문 전 안내 — 정보를 적기 전에 먼저 읽어야 하는 내용이다 */}
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
@@ -484,7 +443,7 @@ export function BookingWizard(props: Props) {
         )}
 
         {/* Step 3: 확인 */}
-        {step === 4 && (
+        {step === 3 && (
           <div className="space-y-3">
             <ReviewRow label={dict.booking.reviewServices}>
               <ul className="space-y-1">
@@ -514,15 +473,6 @@ export function BookingWizard(props: Props) {
             <ReviewRow label={dict.booking.reviewPreferred}>
               {slotLabel(slots, preferred, locale)}
             </ReviewRow>
-            {alts.length > 0 && (
-              <ReviewRow label={dict.booking.reviewAlternatives}>
-                <ul className="space-y-0.5">
-                  {alts.map((id) => (
-                    <li key={id}>{slotLabel(slots, id, locale)}</li>
-                  ))}
-                </ul>
-              </ReviewRow>
-            )}
             <ReviewRow label={dict.booking.reviewInfo}>
               <p>{name}</p>
               <p className="text-muted">{contact}</p>

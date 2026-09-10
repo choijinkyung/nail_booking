@@ -391,6 +391,12 @@ export async function declineBooking(input: {
  * 예약 취소 대신 "가능시간 안내": 여러 시간을 제안하면 손님이 조회 화면에서
  * 그중 하나를 골라 확정됩니다. (status 는 pending 유지)
  */
+/**
+ * 손님에게 다른 시간을 제안한다. 확인 대기 예약은 물론, 이미 확정된
+ * 예약에도 쓸 수 있다 — 사장님 사정으로 시간을 옮겨야 할 때, 일방적으로
+ * 바꾸는 대신 손님이 고르게 한다. 손님이 고르기 전까지 기존 확정 시간은
+ * 그대로 유지된다.
+ */
 export async function proposeTimes(input: {
   bookingId: string;
   slotIds: string[];

@@ -188,7 +188,7 @@ const ko = {
     reRequestDesc: "가능한 다른 시간을 골라 다시 요청할 수 있어요. 처음부터 다시 하지 않아도 돼요.",
     reRequestSubmit: "다시 요청 보내기",
     proposedTitle: "사장님이 안내한 가능 시간",
-    proposedDesc: "원하는 시간을 골라 예약을 확정하세요.",
+    proposedDesc: "사장님 사정으로 시간 조정을 부탁드려요. 아래에서 편한 시간을 골라주세요. 고르기 전까지 기존 예약은 그대로예요.",
     confirmThisTime: "이 시간으로 확정하기",
   },
   admin: {
@@ -605,7 +605,7 @@ const en: Dict = {
     reRequestDesc: "Pick another available time and request again — no need to start over.",
     reRequestSubmit: "Send new request",
     proposedTitle: "Times offered by the host",
-    proposedDesc: "Pick a time to confirm your booking.",
+    proposedDesc: "A time change is needed. Pick what works for you — your current booking stays until you choose.",
     confirmThisTime: "Confirm this time",
   },
   admin: {

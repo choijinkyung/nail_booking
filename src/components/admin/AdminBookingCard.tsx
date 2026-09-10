@@ -31,8 +31,6 @@ interface Props {
   confirmedAddress: string;
 }
 
-// 임시: 확인 대기의 '다른 시간 제안 / 가능시간 안내' UI를 화면에서 숨김 (코드는 유지)
-const SHOW_PROPOSE_TIMES = false;
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -136,6 +134,71 @@ export function AdminBookingCard({
         fitFrom(pool, s.id, duration || 30),
     );
   }, [openSlots, booking]);
+
+  // 다른 시간 제안 — 확인 대기든 확정된 예약이든 같은 UI 를 쓴다.
+  // 손님이 고르기 전까지 기존 확정 시간은 그대로 유지된다.
+  const proposeUI = (
+    <>
+      <button
+        onClick={() => setShowOffer((v) => !v)}
+        className="text-sm font-medium text-brand-600"
+      >
+        {showOffer ? "\u2303" : "\u2304"} {a.proposeOther}
+      </button>
+      {showOffer && (
+        <div className="mt-1 rounded-md border border-brand-100 p-2">
+          <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
+          {changeCandidates.length === 0 ? (
+            <p className="text-xs text-muted">{a.noOtherChosenTimes}</p>
+          ) : (
+            <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
+              {changeCandidates.map((c) => {
+                const on = offerSlots.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() =>
+                      setOfferSlots((prev) =>
+                        on ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                      )
+                    }
+                    className={`rounded-md border px-2.5 py-1.5 text-xs ${
+                      on
+                        ? "border-brand-600 bg-brand-600 text-white"
+                        : "border-brand-200 bg-white text-brand-900"
+                    }`}
+                  >
+                    {formatDateTime(c.starts_at, locale)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={2}
+            className="mt-2 w-full rounded-md border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+          />
+          <button
+            disabled={pending || offerSlots.length === 0}
+            onClick={() =>
+              run(() =>
+                proposeTimes({
+                  bookingId: booking.id,
+                  slotIds: offerSlots,
+                  message,
+                }),
+              )
+            }
+            className="mt-2 w-full rounded-md bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            {a.proposeSend}
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
@@ -353,59 +416,7 @@ export function AdminBookingCard({
             className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
 
-          {/* 다른 시간 제안 / 조정 — 가능한 시간 여러 개를 골라 손님에게 보내면 손님이 선택 */}
-          {SHOW_PROPOSE_TIMES && (
-            <button
-              onClick={() => setShowOffer((v) => !v)}
-              className="text-sm font-medium text-brand-600"
-            >
-              {showOffer ? "⌃" : "⌄"} {a.proposeOther}
-            </button>
-          )}
-          {showOffer && (
-            <div className="rounded-md border border-brand-100 p-2">
-              <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {openSlots.map((s) => {
-                  const on = offerSlots.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() =>
-                        setOfferSlots((prev) =>
-                          on
-                            ? prev.filter((x) => x !== s.id)
-                            : [...prev, s.id],
-                        )
-                      }
-                      className={`rounded-lg border px-2.5 py-1.5 text-xs ${
-                        on
-                          ? "border-brand-500 bg-brand-500 text-white"
-                          : "border-brand-200 bg-white text-brand-900"
-                      }`}
-                    >
-                      {formatDateTime(s.starts_at, locale)}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                disabled={pending || offerSlots.length === 0}
-                onClick={() =>
-                  run(() =>
-                    proposeTimes({
-                      bookingId: booking.id,
-                      slotIds: offerSlots,
-                      message,
-                    }),
-                  )
-                }
-                className="mt-2 w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-              >
-                {a.proposeSend}
-              </button>
-            </div>
-          )}
+          {proposeUI}
 
           <button
             disabled={pending}
@@ -444,7 +455,10 @@ export function AdminBookingCard({
           {notStarted && (
             <p className="text-[11px] text-muted">{a.completeEarlyNote}</p>
           )}
-          {/* 확정 후에도 시간 변경 가능 */}
+          {/* 손님에게 다른 시간을 제안 — 손님이 고른다 */}
+          {proposeUI}
+
+          {/* 사장님이 직접 옮긴다 */}
           <button
             onClick={() => setShowChangeTime((v) => !v)}
             className="text-sm font-medium text-brand-600"
