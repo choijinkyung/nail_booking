@@ -26,7 +26,13 @@ interface Props {
   currency: string;
 }
 
-const STEPS = ["step_service", "step_time", "step_info", "step_review"] as const;
+const STEPS = [
+  "step_service",
+  "step_time",
+  "step_alt",
+  "step_info",
+  "step_review",
+] as const;
 
 export function BookingWizard(props: Props) {
   const { locale, dict, services, slots, notice, scheduleNote, currency } =
@@ -37,10 +43,11 @@ export function BookingWizard(props: Props) {
 
   const [step, setStep] = useState(0);
   const [qty, setQty] = useState<Record<string, number>>({});
-  // 고른 시간(순서 유지): [0] = 1지망, 나머지 = 대체
-  const [pickedTimes, setPickedTimes] = useState<string[]>([]);
-  const preferred = pickedTimes[0] ?? "";
-  const alts = pickedTimes.slice(1);
+  // 1지망은 하나, 대체 시간은 여러 개(선택 사항) — 서로 다른 단계에서 고른다.
+  const [preferredPick, setPreferredPick] = useState<string[]>([]);
+  const [altPicks, setAltPicks] = useState<string[]>([]);
+  const preferred = preferredPick[0] ?? "";
+  const alts = altPicks.filter((id) => id !== preferred);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
@@ -84,11 +91,9 @@ export function BookingWizard(props: Props) {
   }
   function validateStep(s: number): string {
     if (s === 0 && selectedServices.length === 0) return dict.booking.errService;
-    if (s === 1) {
-      if (pickedTimes.length === 0) return dict.booking.errPreferred;
-      if (pickedTimes.length < 2) return dict.booking.errAlternative;
-    }
-    if (s === 2) {
+    if (s === 1 && !preferred) return dict.booking.errPreferred;
+    // s === 2 (대체 시간)는 선택 사항이라 검증하지 않는다.
+    if (s === 3) {
       if (!name.trim()) return dict.booking.errName;
       if (!contact.trim()) return dict.booking.errContact;
       // 이름+전화번호로 조회하므로 번호에 숫자가 있어야 한다.
@@ -324,26 +329,61 @@ export function BookingWizard(props: Props) {
           </div>
         )}
 
-        {/* Step 1: 시간 (캘린더 → 30분 단위 시간) */}
+        {/* Step 1: 1지망 시간 (하나만) */}
         {step === 1 && (
           <div>
             <p className="mb-1 text-sm font-semibold text-brand-800">
-              {dict.booking.pickTimes}
+              {dict.booking.pickPreferred}
             </p>
-            <p className="mb-3 text-xs text-muted">{dict.booking.pickTimesHint}</p>
+            <p className="mb-3 text-xs text-muted">
+              {dict.booking.pickPreferredHint}
+            </p>
             <TimePicker
               slots={slots}
               durationMin={totalDuration || 30}
-              selected={pickedTimes}
-              onChange={setPickedTimes}
+              selected={preferredPick}
+              onChange={setPreferredPick}
               dict={dict}
               locale={locale}
+              single
             />
           </div>
         )}
 
-        {/* Step 2: 정보 */}
+        {/* Step 2: 대체 시간 — 선택 사항 */}
         {step === 2 && (
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <p className="text-sm font-semibold text-brand-800">
+                {dict.booking.pickAlts}
+              </p>
+              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
+                {dict.booking.optional}
+              </span>
+            </div>
+            <p className="mb-3 text-xs text-muted">{dict.booking.pickAltsHint}</p>
+            <TimePicker
+              slots={slots.filter((s) => s.id !== preferred)}
+              durationMin={totalDuration || 30}
+              selected={altPicks}
+              onChange={setAltPicks}
+              dict={dict}
+              locale={locale}
+            />
+            <button
+              onClick={() => {
+                setAltPicks([]);
+                setStep(3);
+              }}
+              className="mt-4 w-full rounded-xl border border-brand-200 px-4 py-2.5 text-sm font-medium text-muted"
+            >
+              {dict.booking.skipAlts}
+            </button>
+          </div>
+        )}
+
+        {/* Step 3: 정보 */}
+        {step === 3 && (
           <div className="space-y-4">
             <Field label={`${dict.booking.name} *`}>
               <input
@@ -445,7 +485,7 @@ export function BookingWizard(props: Props) {
         )}
 
         {/* Step 3: 확인 */}
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-3">
             <ReviewRow label={dict.booking.reviewServices}>
               <ul className="space-y-1">
@@ -541,7 +581,7 @@ export function BookingWizard(props: Props) {
         ) : (
           <button
             onClick={submit}
-            disabled={pending || !agree || pickedTimes.length < 2}
+            disabled={pending || !agree || !preferred}
             className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
           >
             {pending ? dict.booking.submitting : dict.booking.submitRequest}

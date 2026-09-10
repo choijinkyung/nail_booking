@@ -120,10 +120,7 @@ export async function createBooking(
       id !== input.preferred_slot_id &&
       Boolean(canBook(futureSorted, id, duration)),
   );
-  // 대체 시간 최소 1개 필수
-  if (altIds.length === 0) {
-    return { ok: false, error: "NO_ALTERNATIVE" };
-  }
+  // 대체 시간은 선택 사항 — 없으면 1지망만으로 요청한다.
 
   // 3) 고객(단골) upsert — 연락처를 키로 매칭
   const referral = (input.referral_source ?? "").trim();
