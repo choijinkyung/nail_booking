@@ -3,6 +3,7 @@
  * 통로라, 화면 아래가 아니라 위쪽 유틸리티 묶음(조회·언어)에 함께 둔다.
  * 아이콘이라 자리를 거의 차지하지 않는다.
  */
+/** 아주 연한 레몬색 면. 테두리 없이, 아이콘과 글자를 가운데 정렬한다. */
 export function InstagramLink({
   href,
   label,
@@ -17,7 +18,7 @@ export function InstagramLink({
       rel="noreferrer"
       aria-label={label}
       title={label}
-      className="flex w-full items-center gap-2.5 rounded-lg border border-brand-200 px-4 py-3 text-[15px] font-semibold text-brand-900 hover:bg-brand-50"
+      className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-[#fdfceb] px-4 py-3.5 text-[15px] font-semibold text-brand-900 transition hover:bg-[#faf8e0]"
     >
       <svg
         width="19"

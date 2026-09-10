@@ -55,7 +55,7 @@ const ko = {
     step3Desc: "요청을 보내면 확인 후 시간을 확정해 드려요. (샵 근무로 시간이 조정될 수 있어요)",
     flexNote:
       "네일샵 근무 일정에 따라 예약 시간이 조정될 수 있어요. 그래서 대체 시간을 함께 받아요.",
-    viewGallery: "시술 사진 보기",
+    viewGallery: "인스타그램",
   },
   gallery: {
     title: "시술 갤러리",
@@ -475,7 +475,7 @@ const en: Dict = {
       "Send your request and I'll confirm the time. (Times may shift due to my salon shifts.)",
     flexNote:
       "Times may be adjusted depending on my nail salon schedule, so I collect backup times too.",
-    viewGallery: "View nail photos",
+    viewGallery: "Instagram",
   },
   gallery: {
     title: "Nail gallery",
