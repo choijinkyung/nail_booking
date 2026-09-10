@@ -5,6 +5,8 @@ import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
+import { BookingCalendar, type PickerCustomer } from "./BookingCalendar";
+import type { BlockSlot } from "@/lib/data";
 import { ShareButtons } from "./ShareLinks";
 import { buildPaymentShareText } from "@/lib/paymentShare";
 import {
@@ -15,9 +17,6 @@ import { MiniCalendar } from "./MiniCalendar";
 
 type Tab = "pending" | "upcoming" | "past";
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
 
 /** 캘린더에 표시할 기준 날짜(ISO). 확정/완료는 확정시간, 그 외는 없음. */
 function bookingIso(b: BookingWithSlots): string | null {
@@ -55,6 +54,8 @@ export function BookingManager({
   location,
   confirmedAddress,
   services,
+  blocks,
+  customers,
   paymentText,
   etransferEmail,
   etransferNote,
@@ -70,6 +71,8 @@ export function BookingManager({
   location: string;
   confirmedAddress: string;
   services: Service[];
+  blocks: BlockSlot[];
+  customers: PickerCustomer[];
   paymentText: string;
   etransferEmail: string;
   etransferNote: string;
@@ -107,24 +110,6 @@ export function BookingManager({
       (b.status === "cancelled" || b.status === "declined"),
   );
 
-  // 다가오는 2일(오늘+내일)치는 리스트로 먼저 노출
-  const [ty, tm, td] = today.split("-").map(Number);
-  const tmr = new Date(ty, tm - 1, td + 1);
-  const tomorrowKey = `${tmr.getFullYear()}-${pad(tmr.getMonth() + 1)}-${pad(tmr.getDate())}`;
-  const upcomingSorted = useMemo(
-    () =>
-      [...upcoming].sort((x, y) =>
-        (x.confirmed_slot?.starts_at ?? "").localeCompare(
-          y.confirmed_slot?.starts_at ?? "",
-        ),
-      ),
-    [upcoming],
-  );
-  const next2 = upcomingSorted.filter(
-    (b) => slotDayKey(b.confirmed_slot!.starts_at) <= tomorrowKey,
-  );
-
-  const upcomingByDay = useMemo(() => groupByDay(upcoming), [upcoming]);
   const pastByDay = useMemo(() => groupByDay(pastDated), [pastDated]);
 
   const [tab, setTab] = useState<Tab>(
@@ -141,7 +126,6 @@ export function BookingManager({
   const noticeBooking = notice
     ? (bookings.find((b) => b.id === notice.bookingId) ?? null)
     : null;
-  const [upSel, setUpSel] = useState(today);
   const [pastSel, setPastSel] = useState(today);
   const [showOther, setShowOther] = useState(false);
 
@@ -179,7 +163,6 @@ export function BookingManager({
     </CollapsibleBooking>
   );
 
-  const upSelCards = upcomingByDay.get(upSel) ?? [];
   const pastSelCards = pastByDay.get(pastSel) ?? [];
 
   const TABS: { key: Tab; label: string; count: number }[] = [
@@ -301,49 +284,25 @@ export function BookingManager({
       {/* 예정된 예약 */}
       {tab === "upcoming" && (
         <section className="mt-5">
-          {upcoming.length === 0 ? (
-            <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
-              {a.noUpcoming}
-            </p>
-          ) : (
-            <>
-              {/* 다가오는 2일 — 접힌 목록 */}
-              {next2.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="mb-1 text-[15px] font-bold text-brand-900">
-                    {a.next2days}
-                  </h3>
-                  <div>{next2.map(render)}</div>
-                </div>
-              )}
-
-              {/* 이후 일정 — 캘린더가 주인공 */}
-              <h3 className="mb-2 text-[15px] font-bold text-brand-900">
-                {a.laterSectionTitle}
-              </h3>
-              <MiniCalendar
-                eventsByDay={upcomingByDay}
-                today={today}
-                selected={upSel}
-                onSelect={setUpSel}
-                dict={dict}
-                locale={locale}
-              />
-              <div className="mt-4">
-                {upSelCards.length === 0 ? (
-                  <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
-                    {a.selectDayHint}
-                  </p>
-                ) : (
-                  upSelCards.map(render)
-                )}
-              </div>
-            </>
-          )}
+          {/* 캘린더가 예정된 예약의 주인공. 날짜를 누르면 그날 예약이
+              예약 관리와 똑같은 카드로 펼쳐진다. */}
+          <BookingCalendar
+            bookings={bookings}
+            blocks={blocks}
+            services={services}
+            customers={customers}
+            renderBooking={(id) => {
+              const b = bookings.find((x) => x.id === id);
+              return b ? render(b) : null;
+            }}
+            today={today}
+            dict={dict}
+            locale={locale}
+            currency={currency}
+          />
         </section>
       )}
 
-      {/* 지난 예약 */}
       {tab === "past" && (
         <section className="mt-5">
           {pastDated.length === 0 && pastOther.length === 0 ? (

@@ -4,6 +4,8 @@ import { getDictionary } from "@/lib/i18n";
 import {
   getActiveServices,
   getAllBookings,
+  getBlocks,
+  getCustomers,
   getOpenSlots,
   getSettings,
 } from "@/lib/data";
@@ -19,13 +21,15 @@ export default async function AdminDashboardPage() {
   await requireAdminPage();
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const [bookings, openSlots, settings, baseUrl, activeServices] =
+  const [bookings, openSlots, settings, baseUrl, activeServices, blocks, customers] =
     await Promise.all([
       getAllBookings(),
       getOpenSlots(),
       getSettings(),
       getSiteUrl(),
       getActiveServices(),
+      getBlocks(),
+      getCustomers(),
     ]);
   const today = slotDayKey(new Date().toISOString());
 
@@ -47,6 +51,12 @@ export default async function AdminDashboardPage() {
         location={locale === "en" ? settings.location_en : settings.location_ko}
         confirmedAddress={settings.confirmed_address}
         services={activeServices}
+        blocks={blocks}
+        customers={customers.map((c) => ({
+          id: c.id,
+          name: c.name,
+          contact: c.contact,
+        }))}
         paymentText={locale === "en" ? settings.payment_en : settings.payment_ko}
         etransferEmail={settings.etransfer_email}
         etransferNote={

@@ -5,7 +5,6 @@ import { slotDayKey } from "@/lib/format";
 import { AutoSync } from "./AutoSync";
 import {
   IconBookings,
-  IconCalendar,
   IconCustomers,
   IconGallery,
   IconHours,
@@ -16,7 +15,6 @@ import type { Dict } from "@/lib/i18n";
 
 type Tab =
   | "dashboard"
-  | "calendar"
   | "customers"
   | "availability"
   | "services"
@@ -30,7 +28,6 @@ const TABS: {
   label: keyof Dict["admin"];
 }[] = [
   { key: "dashboard", href: "/admin", Icon: IconBookings, label: "nav_dashboard" },
-  { key: "calendar", href: "/admin/calendar", Icon: IconCalendar, label: "nav_calendar" },
   { key: "customers", href: "/admin/customers", Icon: IconCustomers, label: "nav_customers" },
   { key: "availability", href: "/admin/availability", Icon: IconHours, label: "nav_availability" },
   { key: "services", href: "/admin/services", Icon: IconPrices, label: "nav_services" },

@@ -7,7 +7,6 @@ import type { BookingStatus, BookingWithSlots, Service } from "@/lib/types";
 import type { BlockSlot } from "@/lib/data";
 import {
   formatDateHeading,
-  formatDuration,
   formatMoney,
   formatTimeOnly,
   slotDayKey,
@@ -17,6 +16,7 @@ import { BlockForm } from "./BlockForm";
 import { NewBookingForm } from "./NewBookingForm";
 
 interface CalEvent {
+  bookingId: string;
   dayKey: string;
   iso: string;
   name: string;
@@ -60,6 +60,7 @@ export function BookingCalendar({
   blocks,
   services,
   customers,
+  renderBooking,
   today,
   dict,
   locale,
@@ -69,6 +70,8 @@ export function BookingCalendar({
   blocks: BlockSlot[];
   services: Service[];
   customers: PickerCustomer[];
+  /** 그날 예약을 어떻게 그릴지 — 대시보드가 접이식 카드를 넘겨준다 */
+  renderBooking?: (bookingId: string) => React.ReactNode;
   today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;
@@ -98,6 +101,7 @@ export function BookingCalendar({
           ? (b.final_price ?? b.estimated_total) + (b.tip ?? 0)
           : 0;
       out.push({
+        bookingId: b.id,
         dayKey: slotDayKey(iso),
         iso,
         name: b.customer_name,
@@ -354,6 +358,8 @@ export function BookingCalendar({
           <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
             {dict.admin.noBookingsOnDay}
           </p>
+        ) : renderBooking ? (
+          <div>{selectedEvents.map((e) => renderBooking(e.bookingId))}</div>
         ) : (
           <ul className="space-y-2">
             {selectedEvents.map((e, i) => (
@@ -366,11 +372,6 @@ export function BookingCalendar({
                 />
                 <span className="w-24 shrink-0 text-sm font-semibold text-brand-900">
                   {formatTimeOnly(e.iso, locale)}
-                  {e.durationMin > 0 && (
-                    <span className="block text-[11px] font-normal text-muted">
-                      {formatDuration(e.durationMin, locale)}
-                    </span>
-                  )}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-brand-900">
@@ -379,16 +380,6 @@ export function BookingCalendar({
                   <span className="block truncate text-xs text-muted">
                     {e.services}
                   </span>
-                </span>
-                <span className="ml-auto shrink-0 text-right text-xs">
-                  <span className="block text-muted">
-                    {statusText(e.status, dict)}
-                  </span>
-                  {e.status === "completed" && e.amount > 0 && (
-                    <span className="block font-semibold text-brand-900">
-                      {formatMoney(e.amount, currency)}
-                    </span>
-                  )}
                 </span>
               </li>
             ))}
@@ -468,13 +459,3 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function statusText(status: BookingStatus, dict: Dict): string {
-  const map: Record<BookingStatus, string> = {
-    pending: dict.status.status_pending,
-    confirmed: dict.status.status_confirmed,
-    declined: dict.status.status_declined,
-    cancelled: dict.status.status_cancelled,
-    completed: dict.status.status_completed,
-  };
-  return map[status];
-}
