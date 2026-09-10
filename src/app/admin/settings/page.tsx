@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.settingsTitle}
       </h1>
-      <SettingsForm settings={settings} dict={dict} />
+      <SettingsForm settings={settings} dict={dict} locale={locale} />
     </AdminShell>
   );
 }

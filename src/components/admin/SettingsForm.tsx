@@ -9,15 +9,18 @@ import {
   uploadLogo,
   type ActionResult,
 } from "@/app/admin/actions";
-import type { Dict } from "@/lib/i18n";
+import type { Dict, Locale } from "@/lib/i18n";
+import { defaultHeadline } from "@/lib/bookingNotice";
 import type { Settings } from "@/lib/types";
 
 export function SettingsForm({
   settings,
   dict,
+  locale,
 }: {
   settings: Settings;
   dict: Dict;
+  locale: Locale;
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
     saveSettings,
@@ -63,20 +66,28 @@ export function SettingsForm({
         <Section title={a.secMessages}>
           <p className="mb-3 text-xs text-muted">{a.secMessagesHint}</p>
           <Group title={a.msgInvite}>
-            <Area name="msg_invite" label="" def={settings.msg_invite} cls={input} />
+            <Area
+              name="msg_invite"
+              label=""
+              def={settings.msg_invite || a.shareMsgBook}
+              cls={input}
+            />
           </Group>
-          <Group title={a.msgConfirmed}>
-            <Area name="msg_confirmed" label="" def={settings.msg_confirmed} cls={input} />
-          </Group>
-          <Group title={a.msgChanged}>
-            <Area name="msg_changed" label="" def={settings.msg_changed} cls={input} />
-          </Group>
-          <Group title={a.msgDeclined}>
-            <Area name="msg_declined" label="" def={settings.msg_declined} cls={input} />
-          </Group>
-          <Group title={a.msgCancelled}>
-            <Area name="msg_cancelled" label="" def={settings.msg_cancelled} cls={input} />
-          </Group>
+          {(["confirmed", "changed", "declined", "cancelled"] as const).map(
+            (kind) => (
+              <Group key={kind} title={MSG_LABEL[kind](a)}>
+                <Area
+                  name={`msg_${kind}`}
+                  label=""
+                  def={
+                    (settings[`msg_${kind}`] as string) ||
+                    defaultHeadline(kind, locale)
+                  }
+                  cls={input}
+                />
+              </Group>
+            ),
+          )}
         </Section>
 
         <Section title={a.secLocation}>
@@ -304,6 +315,13 @@ function EmailCheck({ dict }: { dict: Dict }) {
     </div>
   );
 }
+
+const MSG_LABEL = {
+  confirmed: (a: Dict["admin"]) => a.msgConfirmed,
+  changed: (a: Dict["admin"]) => a.msgChanged,
+  declined: (a: Dict["admin"]) => a.msgDeclined,
+  cancelled: (a: Dict["admin"]) => a.msgCancelled,
+};
 
 /** 설정 한 묶음. 기본은 접혀 있어 화면이 한눈에 들어온다. */
 function Section({

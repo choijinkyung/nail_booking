@@ -9,6 +9,12 @@ export type NoticeKind =
   | "cancelled"
   | "completed";
 
+/** 종류별 기본 첫 줄. 설정 화면이 이걸 미리 채워 보여준다. */
+export function defaultHeadline(kind: NoticeKind, locale: Locale): string {
+  const m = HEADLINE[kind];
+  return locale === "en" ? m.en : m.ko;
+}
+
 const HEADLINE: Record<NoticeKind, { ko: string; en: string }> = {
   confirmed: {
     ko: "예약이 확정됐어요 🎉",
