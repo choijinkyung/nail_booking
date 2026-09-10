@@ -207,34 +207,27 @@ export function BookingWizard(props: Props) {
   // ── 위저드 ────────────────────────────────────────────────
   return (
     <div className="mt-3">
-      <h1 className="text-xl font-bold text-brand-800">{dict.booking.title}</h1>
+      <h1 className="text-[22px] font-bold text-brand-900">
+        {dict.booking.title}
+      </h1>
 
-      {/* 진행 표시 */}
-      <ol className="mt-4 flex items-center gap-2">
-        {STEPS.map((key, i) => (
-          <li key={key} className="flex flex-1 items-center gap-2">
-            <div
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                i <= step
-                  ? "bg-brand-600 text-white"
-                  : "bg-brand-100 text-brand-400"
-              }`}
-            >
-              {i + 1}
-            </div>
-            {i < STEPS.length - 1 && (
-              <div
-                className={`h-0.5 flex-1 rounded ${
-                  i < step ? "bg-brand-500" : "bg-brand-100"
-                }`}
-              />
-            )}
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-sm font-medium text-brand-600">
-        {dict.booking[STEPS[step]]}
-      </p>
+      {/* 진행 표시 — 얇은 선 하나로 어디까지 왔는지만 보여준다 */}
+      <div className="mt-4">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[15px] font-semibold text-brand-900">
+            {dict.booking[STEPS[step]]}
+          </p>
+          <p className="text-xs text-muted">
+            {step + 1} / {STEPS.length}
+          </p>
+        </div>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-brand-100">
+          <div
+            className="h-full rounded-full bg-brand-600 transition-[width] duration-300"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
+      </div>
 
       <div className="mt-4 min-h-[240px]">
         {/* Step 0: 시술 */}
@@ -561,11 +554,11 @@ export function BookingWizard(props: Props) {
       )}
 
       {/* 하단 내비게이션 */}
-      <div className="mt-5 flex gap-3">
+      <div className="safe-b sticky bottom-0 z-20 mt-6 flex gap-2 border-t border-brand-100 bg-white/90 pt-3 backdrop-blur-md">
         {step > 0 && (
           <button
             onClick={back}
-            className="rounded-xl border border-brand-200 px-5 py-3 font-semibold text-brand-700"
+            className="min-h-12 rounded-xl border border-brand-200 px-5 text-[15px] font-semibold text-brand-800"
           >
             {dict.common.back}
           </button>
@@ -574,7 +567,7 @@ export function BookingWizard(props: Props) {
           <button
             onClick={next}
             disabled={validateStep(step) !== ""}
-            className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+            className="min-h-12 flex-1 rounded-xl bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
           >
             {dict.common.next}
           </button>
@@ -582,7 +575,7 @@ export function BookingWizard(props: Props) {
           <button
             onClick={submit}
             disabled={pending || !agree || !preferred}
-            className="flex-1 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+            className="min-h-12 flex-1 rounded-xl bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
           >
             {pending ? dict.booking.submitting : dict.booking.submitRequest}
           </button>
@@ -684,7 +677,7 @@ function ReviewRow({
 }) {
   return (
     <div className="rounded-2xl border border-brand-100 bg-white p-4">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-400">
+      <p className="mb-1 text-[13px] font-semibold text-brand-400">
         {label}
       </p>
       <div className="text-sm text-brand-900">{children}</div>

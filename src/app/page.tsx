@@ -3,7 +3,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
 import { formatDuration, formatServicePrice, unitLabel } from "@/lib/format";
 import { SiteHeader } from "@/components/SiteHeader";
-import { ButtonLink, Card, NoticeBanner, SectionTitle } from "@/components/ui";
+import { ButtonLink, NoticeBanner, SectionTitle } from "@/components/ui";
 
 export default async function LandingPage() {
   const locale = await getLocale();
@@ -33,45 +33,33 @@ export default async function LandingPage() {
       <SiteHeader locale={locale} shopName={shopName} />
 
       <main className="mx-auto max-w-md px-4 pb-28">
-        {/* Hero */}
-        <section className="pt-8 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-brand-100 text-3xl">
-            {settings.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={settings.logo_url}
-                alt={shopName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              "💅"
-            )}
-          </div>
-          <h1 className="text-2xl font-extrabold text-brand-800">{shopName}</h1>
-          <p className="mt-2 text-base font-medium text-brand-600">
+        {/* Hero — 이름과 한 줄, 그리고 바로 예약. 장식은 로고 하나로 충분하다. */}
+        <section className="pt-10">
+          {settings.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={settings.logo_url}
+              alt=""
+              className="mb-5 h-14 w-14 rounded-xl object-cover"
+            />
+          )}
+          <h1 className="text-[32px] font-bold leading-tight text-brand-900">
             {heroTagline}
-          </p>
-          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted">
+          </h1>
+          <p className="mt-3 max-w-[46ch] text-[15px] leading-relaxed text-muted">
             {heroSub}
           </p>
         </section>
 
         {/* ⏰ 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
         <section className="mt-6">
-          <div className="rounded-2xl bg-brand-600 p-4 text-white shadow-sm">
-            <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-xl">
-                ⏰
-              </span>
-              <div>
-                <p className="text-sm font-bold">
-                  {isEn ? "Please note about timing" : "예약 시간 안내 (꼭 읽어주세요)"}
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-white/95 whitespace-pre-line">
-                  {scheduleNote}
-                </p>
-              </div>
-            </div>
+          <div className="rounded-2xl bg-surface p-4">
+            <p className="text-sm font-bold text-brand-900">
+              {isEn ? "Please note about timing" : "예약 시간 안내 (꼭 읽어주세요)"}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted whitespace-pre-line">
+              {scheduleNote}
+            </p>
           </div>
         </section>
 
@@ -82,38 +70,42 @@ export default async function LandingPage() {
 
         {/* How it works */}
         <section className="mt-8">
-          <SectionTitle>🌸 {dict.landing.howTitle}</SectionTitle>
-          <div className="space-y-3">
+          <SectionTitle>{dict.landing.howTitle}</SectionTitle>
+          <ol className="divide-y divide-brand-100 border-y border-brand-100">
             {steps.map((s, i) => (
-              <Card key={i} className="flex items-start gap-3 p-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg">
-                  {s.icon}
-                </div>
-                <div>
-                  <p className="font-semibold text-brand-800">
-                    {i + 1}. {s.title}
-                  </p>
-                  <p className="mt-0.5 text-sm text-muted">{s.desc}</p>
-                </div>
-              </Card>
+              <li key={i} className="flex gap-3 py-4">
+                <span className="w-5 shrink-0 text-[15px] font-bold text-brand-600">
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="block font-semibold text-brand-900">
+                    {s.title}
+                  </span>
+                  <span className="mt-0.5 block text-sm leading-relaxed text-muted">
+                    {s.desc}
+                  </span>
+                </span>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         {/* Pricing */}
         <section className="mt-8">
-          <SectionTitle>💰 {dict.landing.pricingTitle}</SectionTitle>
-          <Card className="p-0">
+          <SectionTitle>{dict.landing.pricingTitle}</SectionTitle>
+          <div>
             {services.length === 0 ? (
-              <p className="p-5 text-sm text-muted">{dict.booking.noServices}</p>
+              <p className="rounded-2xl bg-surface px-4 py-8 text-center text-sm text-muted">
+                {dict.booking.noServices}
+              </p>
             ) : (
-              <ul className="divide-y divide-brand-50">
+              <ul className="divide-y divide-brand-100 border-y border-brand-100">
                 {services.map((s) => {
                   const u = unitLabel(s.unit, locale);
                   return (
                     <li
                       key={s.id}
-                      className="flex items-center justify-between px-5 py-3.5"
+                      className="flex items-center justify-between py-3.5"
                     >
                       <div>
                         <p className="font-medium text-brand-900">
@@ -141,19 +133,17 @@ export default async function LandingPage() {
                 })}
               </ul>
             )}
-          </Card>
-          <p className="mt-2 px-1 text-xs text-muted">{dict.landing.pricingNote}</p>
+          </div>
+          <p className="mt-2 text-xs text-muted">{dict.landing.pricingNote}</p>
         </section>
 
         {/* Location */}
         <section className="mt-8">
-          <SectionTitle>📍 {dict.landing.locationTitle}</SectionTitle>
-          <Card>
-            <p className="text-sm leading-relaxed text-brand-900">{location}</p>
-          </Card>
+          <SectionTitle>{dict.landing.locationTitle}</SectionTitle>
+          <p className="text-[15px] leading-relaxed text-brand-900">{location}</p>
         </section>
 
-        <section className="mt-8 flex justify-center gap-2">
+        <section className="mt-10 flex gap-2">
           {/* 갤러리 기능 임시 비활성화 — '시술 사진 보기'는 인스타그램으로 이동 */}
           <ButtonLink
             href="https://www.instagram.com/zena_12.7"
@@ -161,10 +151,10 @@ export default async function LandingPage() {
             target="_blank"
             rel="noreferrer"
           >
-            📸 {dict.landing.viewGallery}
+            {dict.landing.viewGallery}
           </ButtonLink>
           <ButtonLink href="/status" variant="ghost">
-            🔎 {dict.landing.ctaLookup}
+            {dict.landing.ctaLookup}
           </ButtonLink>
         </section>
       </main>

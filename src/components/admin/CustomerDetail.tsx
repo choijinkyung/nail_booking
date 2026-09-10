@@ -121,7 +121,7 @@ export function CustomerDetail({
 
       {/* 수정 */}
       <section className="space-y-2 rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="text-xs font-semibold uppercase text-brand-400">
+        <p className="text-[13px] font-semibold text-brand-400">
           {a.editCustomer}
         </p>
         <label className="block">
@@ -169,7 +169,7 @@ export function CustomerDetail({
 
       {/* 방문 이력 */}
       <section className="rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="mb-2 text-xs font-semibold uppercase text-brand-400">
+        <p className="mb-2 text-[13px] font-semibold text-brand-400">
           {a.history}
         </p>
         {row.history.length === 0 ? (

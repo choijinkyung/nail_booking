@@ -265,7 +265,7 @@ export function AdminBookingCard({
       {/* 요청 시간 & 확정 컨트롤 (pending) */}
       {booking.status === "pending" && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs font-semibold uppercase text-brand-400">
+          <p className="text-[13px] font-semibold text-brand-400">
             {dict.status.preferredTime} / {a.alternatives}
           </p>
           {requested.length === 0 && (

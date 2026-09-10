@@ -80,7 +80,7 @@ export function ShareLinks({
 
   return (
     <div className="mb-4 rounded-2xl border border-brand-100 bg-white p-4">
-      <p className="mb-2 text-xs font-semibold uppercase text-brand-400">
+      <p className="mb-2 text-[13px] font-semibold text-brand-400">
         {a.shareTitle}
       </p>
       <ul className="space-y-2">

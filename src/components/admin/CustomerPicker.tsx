@@ -73,7 +73,7 @@ export function CustomerPicker({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase text-brand-400">
+      <p className="text-[13px] font-semibold text-brand-400">
         {a.pickCustomer}
       </p>
 

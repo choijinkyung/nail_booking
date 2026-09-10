@@ -140,7 +140,7 @@ export function BookingManager({
       {/* 손님 요청 — 항상 최상단 */}
       {requests.length > 0 && (
         <section className="mt-5">
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-600">
+          <h2 className="mb-2 text-sm font-bold text-amber-600">
             {a.requestSectionTitle} ({requests.length})
           </h2>
           <div className="space-y-3">{requests.map(render)}</div>
@@ -202,7 +202,7 @@ export function BookingManager({
               {/* 다가오는 2일 */}
               {next2.length > 0 && (
                 <div className="mb-5">
-                  <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-brand-500">
+                  <h3 className="mb-2 text-sm font-bold text-brand-500">
                     {a.next2days}
                   </h3>
                   <div className="space-y-3">{next2.map(render)}</div>
@@ -210,7 +210,7 @@ export function BookingManager({
               )}
 
               {/* 이후 일정 — 캘린더 */}
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-brand-500">
+              <h3 className="mb-2 text-sm font-bold text-brand-500">
                 {a.laterSectionTitle}
               </h3>
               <MiniCalendar

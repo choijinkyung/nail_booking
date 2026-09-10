@@ -10,7 +10,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-brand-100 bg-white/80 p-5 shadow-sm backdrop-blur ${className}`}
+      className={`rounded-2xl border border-brand-100 bg-white p-5 ${className}`}
     >
       {children}
     </div>
@@ -19,9 +19,28 @@ export function Card({
 
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-brand-800">
-      {children}
-    </h2>
+    <h2 className="mb-3 text-[17px] font-bold text-brand-800">{children}</h2>
+  );
+}
+
+/** 섹션 사이를 가르는 헤어라인. 카드로 감싸는 대신 이걸로 구조를 만든다. */
+export function Divider({ className = "" }: { className?: string }) {
+  return <hr className={`border-0 border-t border-brand-100 ${className}`} />;
+}
+
+/** 값이 없을 때 보여주는 안내 — 다음에 뭘 하면 되는지 알려준다. */
+export function EmptyState({
+  children,
+  action,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl bg-surface px-4 py-8 text-center">
+      <p className="text-sm text-muted">{children}</p>
+      {action && <div className="mt-3 flex justify-center">{action}</div>}
+    </div>
   );
 }
 
@@ -32,10 +51,10 @@ type BtnProps = {
 };
 
 const btnBase =
-  "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold transition active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none";
 const btnVariants = {
-  primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700",
-  outline: "border border-brand-300 bg-white text-brand-700 hover:bg-brand-50",
+  primary: "bg-brand-600 text-white hover:bg-brand-700",
+  outline: "border border-brand-200 bg-white text-brand-800 hover:bg-brand-50",
   ghost: "text-brand-700 hover:bg-brand-50",
 };
 
@@ -66,9 +85,9 @@ export function NoticeBanner({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
       <div className="flex gap-3">
-        <span className="text-xl leading-none" aria-hidden>
+        <span className="text-lg leading-none" aria-hidden>
           ⚠️
         </span>
         <div>

@@ -103,7 +103,7 @@ export function NewBookingForm({
 
       {/* 시술 선택 */}
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase text-brand-400">
+        <p className="mb-1 text-[13px] font-semibold text-brand-400">
           {a.pickServices}
         </p>
         <ul className="space-y-1">
@@ -156,7 +156,7 @@ export function NewBookingForm({
 
       {/* 시간 */}
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase text-brand-400">
+        <p className="mb-1 text-[13px] font-semibold text-brand-400">
           {a.pickTime}
         </p>
         <select

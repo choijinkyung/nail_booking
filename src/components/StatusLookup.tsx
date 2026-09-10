@@ -66,7 +66,7 @@ export function StatusLookup({
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && lookupCode()}
             placeholder={st.codePlaceholder}
-            className={`${inputClass} uppercase tracking-widest`}
+            className={`${inputClass} tracking-widest`}
             autoCapitalize="characters"
           />
           <button

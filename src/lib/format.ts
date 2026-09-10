@@ -25,6 +25,38 @@ export function formatServicePrice(
 const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const SHOP_TZ = "America/Vancouver";
+
+/**
+ * 가게 시간대 기준 요일 (0=일 … 6=토).
+ * 주의: `new Date("2026-09-13").getDay()` 는 그 문자열을 UTC 자정으로 읽고
+ * 실행 환경의 지역 시간으로 요일을 내므로, UTC보다 뒤진 시간대에서는
+ * 하루 밀린다. 날짜 부분을 UTC 로 다시 조립해 getUTCDay 로 읽는다.
+ */
+function shopWeekday(d: Date): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SHOP_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const g = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return new Date(Date.UTC(g("year"), g("month") - 1, g("day"))).getUTCDay();
+}
+
+/**
+ * 오전/오후 판정. en-CA 는 dayPeriod 를 "a.m." 으로 주기 때문에
+ * "AM" 과 문자열 비교하면 항상 오후가 된다. 시(hour)를 24시간제로 직접 읽는다.
+ */
+function isMorning(d: Date): boolean {
+  const h = new Intl.DateTimeFormat("en-US", {
+    timeZone: SHOP_TZ,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  return Number(h.find((p) => p.type === "hour")?.value ?? 0) < 12;
+}
+
 /** 슬롯 시작 시각을 사람이 읽는 형식으로 (Vancouver 시간대) */
 export function formatSlot(
   slot: Pick<AvailabilitySlot, "starts_at" | "ends_at">,
@@ -36,48 +68,40 @@ export function formatSlot(
 export function formatDateTime(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const tz = "America/Vancouver";
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SHOP_TZ,
     month: "2-digit",
     day: "2-digit",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    weekday: "short",
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   const mo = get("month");
   const day = get("day");
   const hour = get("hour");
   const min = get("minute");
-  const ap = get("dayPeriod");
-  const dow = new Date(
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d),
-  ).getDay();
+  const am = isMorning(d);
+  const dow = shopWeekday(d);
 
   if (locale === "ko") {
-    return `${mo}/${day}(${KO_DAYS[dow]}) ${ap === "AM" ? "오전" : "오후"} ${hour}:${min}`;
+    return `${mo}/${day}(${KO_DAYS[dow]}) ${am ? "오전" : "오후"} ${hour}:${min}`;
   }
-  return `${EN_DAYS[dow]} ${mo}/${day} ${hour}:${min} ${ap}`;
+  return `${EN_DAYS[dow]} ${mo}/${day} ${hour}:${min} ${am ? "AM" : "PM"}`;
 }
 
 /** 날짜만 (그룹 헤더용) */
 export function formatDateHeading(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const tz = "America/Vancouver";
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
+    timeZone: SHOP_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const dow = new Date(
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d),
-  ).getDay();
+  const dow = shopWeekday(d);
   if (locale === "ko") {
     return `${get("year")}. ${get("month")}. ${get("day")} (${KO_DAYS[dow]})`;
   }
@@ -109,18 +133,18 @@ export function slotDayKey(iso: string): string {
 export function formatTimeOnly(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Vancouver",
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SHOP_TZ,
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const ap = get("dayPeriod");
+  const am = isMorning(d);
   if (locale === "ko") {
-    return `${ap === "AM" ? "오전" : "오후"} ${get("hour")}:${get("minute")}`;
+    return `${am ? "오전" : "오후"} ${get("hour")}:${get("minute")}`;
   }
-  return `${get("hour")}:${get("minute")} ${ap}`;
+  return `${get("hour")}:${get("minute")} ${am ? "AM" : "PM"}`;
 }
 
 /** 소요 시간(분) → "1시간 30분" / "1h 30m" */

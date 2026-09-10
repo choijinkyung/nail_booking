@@ -103,7 +103,7 @@ export default async function StatusPage({
 
             {booking.reference_url && (
               <Card>
-                <p className="mb-2 text-xs font-semibold uppercase text-brand-400">
+                <p className="mb-2 text-[13px] font-semibold text-brand-400">
                   📎 {dict.booking.reference.split(" (")[0]}
                 </p>
                 <a href={booking.reference_url} target="_blank" rel="noreferrer">
@@ -120,7 +120,7 @@ export default async function StatusPage({
             {/* 확정 시간 */}
             {booking.status === "confirmed" && booking.confirmed_slot && (
               <Card className="border-green-200 bg-green-50/60">
-                <p className="text-xs font-semibold uppercase text-green-700">
+                <p className="text-[13px] font-semibold text-green-700">
                   {st.confirmedTime}
                 </p>
                 <p className="mt-1 text-lg font-bold text-green-800">
@@ -132,7 +132,7 @@ export default async function StatusPage({
             {/* 안내 메시지 */}
             {booking.admin_message && (
               <Card>
-                <p className="text-xs font-semibold uppercase text-brand-400">
+                <p className="text-[13px] font-semibold text-brand-400">
                   {st.messageFromShop}
                 </p>
                 <p className="mt-1 whitespace-pre-line text-sm text-brand-900">
@@ -144,7 +144,7 @@ export default async function StatusPage({
             {/* 요청 시간들 */}
             {booking.status === "pending" && (
               <Card>
-                <p className="text-xs font-semibold uppercase text-brand-400">
+                <p className="text-[13px] font-semibold text-brand-400">
                   {st.preferredTime}
                 </p>
                 <p className="mt-1 text-sm text-brand-900">
@@ -154,7 +154,7 @@ export default async function StatusPage({
                 </p>
                 {booking.alternative_slots.length > 0 && (
                   <>
-                    <p className="mt-3 text-xs font-semibold uppercase text-brand-400">
+                    <p className="mt-3 text-[13px] font-semibold text-brand-400">
                       {st.alternativeTimes}
                     </p>
                     <ul className="mt-1 space-y-0.5 text-sm text-brand-900">
@@ -169,7 +169,7 @@ export default async function StatusPage({
 
             {/* 시술 내역 */}
             <Card>
-              <p className="text-xs font-semibold uppercase text-brand-400">
+              <p className="text-[13px] font-semibold text-brand-400">
                 {st.services}
               </p>
               <ul className="mt-2 space-y-1 text-sm text-brand-900">
