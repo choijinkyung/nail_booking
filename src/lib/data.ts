@@ -2,6 +2,7 @@ import "server-only";
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { isSupabaseAdminConfigured } from "./supabase/config";
 import { normalizePhone } from "./phone";
+import { nameKey } from "./customerKey";
 import type { BusinessHour } from "./schedule";
 import type {
   AvailabilitySlot,
@@ -289,15 +290,17 @@ export async function findBookingCodeByNamePhone(
   if (!cleanName || !norm) return null;
   try {
     const sb = createSupabaseAdminClient();
+    // 이름은 코드에서 비교한다. ilike 로 넘기면 "%" 가 와일드카드가 되어
+    // 이름 확인이 무력화되고 번호만 아는 사람이 남의 예약을 열 수 있다.
     const { data } = await sb
       .from("bookings")
-      .select("code")
-      .ilike("customer_name", cleanName)
+      .select("code, customer_name")
       .eq("customer_contact_norm", norm)
       .order("created_at", { ascending: false })
-      .limit(1);
-    const rows = (data as { code: string }[]) ?? [];
-    return rows[0]?.code ?? null;
+      .limit(30);
+    const rows = (data as { code: string; customer_name: string }[]) ?? [];
+    const want = nameKey(cleanName);
+    return rows.find((r) => nameKey(r.customer_name) === want)?.code ?? null;
   } catch {
     return null;
   }

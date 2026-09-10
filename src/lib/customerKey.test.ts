@@ -52,3 +52,17 @@ describe("sameCustomer", () => {
     ).toBe(true);
   });
 });
+
+describe("이름에 패턴 문자가 있어도 안전한가", () => {
+  it("'%' 는 아무 이름에나 걸리는 와일드카드가 아니다", () => {
+    expect(
+      sameCustomer({ name: "%", contact: "0" }, { name: "한수민", contact: "0" }),
+    ).toBe(false);
+  });
+
+  it("'_' 도 한 글자 와일드카드가 아니다", () => {
+    expect(
+      sameCustomer({ name: "_", contact: "0" }, { name: "A", contact: "0" }),
+    ).toBe(false);
+  });
+});

@@ -12,7 +12,13 @@ export function isUsablePhone(contact: string): boolean {
   return normalizePhone(contact ?? "").length >= MIN_PHONE_DIGITS;
 }
 
-function nameKey(name: string): string {
+/**
+ * 이름 비교용 키. 앞뒤 공백과 대소문자를 무시한다.
+ *
+ * 이름 비교는 반드시 이 함수로 코드에서 한다 — DB 의 ilike 로 넘기면
+ * "%" 같은 문자가 와일드카드로 해석돼 아무 이름에나 걸린다.
+ */
+export function nameKey(name: string): string {
   return (name ?? "").trim().toLowerCase();
 }
 

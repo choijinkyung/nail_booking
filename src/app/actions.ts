@@ -9,7 +9,7 @@ import { notifyAdminBookingUpdate, notifyAdminNewBooking } from "@/lib/email";
 import { getSiteUrl } from "@/lib/url";
 import { formatSlot } from "@/lib/format";
 import { normalizePhone } from "@/lib/phone";
-import { isUsablePhone } from "@/lib/customerKey";
+import { isUsablePhone, nameKey } from "@/lib/customerKey";
 import { findBookingCodeByNamePhone } from "@/lib/data";
 import { bookingDurationMin, canBook, fitFrom, sortSlots } from "@/lib/scheduling";
 import { generateCode } from "@/lib/code";
@@ -129,12 +129,16 @@ export async function createBooking(
   try {
     // 제대로 된 번호면 번호만으로, 자리채움 값이면 이름까지 같아야 같은 손님이다.
     // ("0" 같은 값에 여러 사람이 걸려 한 명으로 합쳐지는 일을 막는다)
-    let q = sb.from("customers").select("id, referral_source");
-    q = contactNorm
+    // 이름 비교는 코드에서 한다 — ilike 로 넘기면 "%" 가 와일드카드가 된다.
+    const q = sb.from("customers").select("id, name, referral_source");
+    const { data: rows } = await (contactNorm
       ? q.eq("contact_norm", contactNorm)
-      : q.eq("contact", contact);
-    if (!isUsablePhone(contact)) q = q.ilike("name", name);
-    const { data: existing } = await q.maybeSingle();
+      : q.eq("contact", contact));
+    const candidates =
+      (rows as { id: string; name: string; referral_source: string }[]) ?? [];
+    const existing = isUsablePhone(contact)
+      ? (candidates[0] ?? null)
+      : (candidates.find((c) => nameKey(c.name) === nameKey(name)) ?? null);
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb

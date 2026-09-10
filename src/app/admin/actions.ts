@@ -28,7 +28,7 @@ import type {
 import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
 import { normalizePhone } from "@/lib/phone";
-import { isUsablePhone } from "@/lib/customerKey";
+import { isUsablePhone, nameKey } from "@/lib/customerKey";
 import {
   clampWindowDays,
   plannedSlots,
@@ -248,11 +248,19 @@ export async function createAdminBooking(input: {
     referral = (input.customer.referral ?? "").trim();
     if (!name || !contact) return { ok: false, error: "INVALID" };
     // 제대로 된 번호면 번호만으로, 자리채움 값이면 이름까지 같아야 같은 손님.
+    // 이름 비교는 코드에서 한다 — ilike 로 넘기면 "%" 가 와일드카드가 된다.
     const contactNorm = normalizePhone(contact);
-    let q = sb.from("customers").select("id");
-    q = contactNorm ? q.eq("contact_norm", contactNorm) : q.eq("contact", contact);
-    if (!isUsablePhone(contact)) q = q.ilike("name", name);
-    const { data: existing } = await q.maybeSingle();
+    const findCustomer = async () => {
+      const q = sb.from("customers").select("id, name");
+      const { data } = await (contactNorm
+        ? q.eq("contact_norm", contactNorm)
+        : q.eq("contact", contact));
+      const rows = (data as { id: string; name: string }[]) ?? [];
+      return isUsablePhone(contact)
+        ? (rows[0] ?? null)
+        : (rows.find((c) => nameKey(c.name) === nameKey(name)) ?? null);
+    };
+    const existing = await findCustomer();
     if (existing) {
       customerId = (existing as { id: string }).id;
       await sb.from("customers").update({ name, email }).eq("id", customerId);
@@ -270,12 +278,7 @@ export async function createAdminBooking(input: {
       customerId = (created as { id: string } | null)?.id ?? null;
       if (!customerId && insErr?.code === "23505") {
         // 동시에 같은 연락처로 등록된 경우: 방금 다른 요청이 만든 행을 재조회해 연결한다.
-        let q2 = sb.from("customers").select("id");
-        q2 = contactNorm
-          ? q2.eq("contact_norm", contactNorm)
-          : q2.eq("contact", contact);
-        if (!isUsablePhone(contact)) q2 = q2.ilike("name", name);
-        const { data: raced } = await q2.maybeSingle();
+        const raced = await findCustomer();
         customerId = (raced as { id: string } | null)?.id ?? null;
       }
     }
@@ -392,70 +395,6 @@ export async function declineBooking(input: {
  * 예약 취소 대신 "가능시간 안내": 여러 시간을 제안하면 손님이 조회 화면에서
  * 그중 하나를 골라 확정됩니다. (status 는 pending 유지)
  */
-/**
- * 손님에게 다른 시간을 제안한다. 확인 대기 예약은 물론, 이미 확정된
- * 예약에도 쓸 수 있다 — 사장님 사정으로 시간을 옮겨야 할 때, 일방적으로
- * 바꾸는 대신 손님이 고르게 한다. 손님이 고르기 전까지 기존 확정 시간은
- * 그대로 유지된다.
- */
-export async function proposeTimes(input: {
-  bookingId: string;
-  slotIds: string[];
-  message?: string;
-}): Promise<ActionResult> {
-  await assertAdmin();
-  if (!input.slotIds || input.slotIds.length === 0)
-    return { ok: false, error: "NO_SLOTS" };
-  const sb = createSupabaseAdminClient();
-  // 열려 있는 미래 슬롯만 제안
-  const nowIso = new Date().toISOString();
-  const { data: slotRows } = await sb
-    .from("availability_slots")
-    .select("id, status, starts_at")
-    .in("id", input.slotIds);
-  const valid = ((slotRows as { id: string; status: string; starts_at: string }[]) ?? [])
-    .filter((s) => s.status === "open" && s.starts_at >= nowIso)
-    .map((s) => s.id);
-  if (valid.length === 0) return { ok: false, error: "NO_SLOTS" };
-
-  const { data, error } = await sb
-    .from("bookings")
-    .update({
-      proposed_slot_ids: valid,
-      admin_message: input.message ?? "",
-      request_kind: "",
-      change_request: "",
-      change_requested_at: null,
-      requested_slot_id: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.bookingId)
-    .select("*")
-    .single();
-  if (error || !data) return { ok: false, error: "DB" };
-
-  // 손님에게 "가능시간 안내" 이메일 (이메일 입력 시)
-  const b = data as Booking;
-  if (b.customer_email) {
-    try {
-      const siteUrl = await getSiteUrl();
-      await notifyCustomerResult({
-        to: b.customer_email,
-        confirmed: false,
-        code: b.code,
-        timeText: "",
-        message:
-          (input.message ? input.message + "\n\n" : "") +
-          "가능한 시간을 안내드려요. 예약 조회 화면에서 원하는 시간을 선택해주세요.",
-        siteUrl,
-      });
-    } catch (err) {
-      console.error("[proposeTimes] 이메일 무시:", err);
-    }
-  }
-  revalidatePath("/admin");
-  return { ok: true };
-}
 
 
 /** 손님의 요청을 반려(변경 없이 요청만 해제). 원하면 안내 메시지를 손님에게 발송. */
@@ -927,9 +866,17 @@ export async function createCustomer(input: {
   const byName = !isUsablePhone(contact);
 
   const sb = createSupabaseAdminClient();
-  let q0 = sb.from("customers").select("id").eq(matchCol, matchVal);
-  if (byName) q0 = q0.ilike("name", name);
-  const { data: existing } = await q0.maybeSingle();
+  const findCustomer = async () => {
+    const { data } = await sb
+      .from("customers")
+      .select("id, name")
+      .eq(matchCol, matchVal);
+    const rows = (data as { id: string; name: string }[]) ?? [];
+    return byName
+      ? (rows.find((c) => nameKey(c.name) === nameKey(name)) ?? null)
+      : (rows[0] ?? null);
+  };
+  const existing = await findCustomer();
   if (existing) {
     return { ok: true, id: (existing as { id: string }).id, existed: true };
   }
@@ -949,9 +896,7 @@ export async function createCustomer(input: {
 
   if (error?.code === "23505") {
     // 동시에 같은 연락처가 등록됨 → 그 행을 기존 고객으로 취급한다.
-    let q1 = sb.from("customers").select("id").eq(matchCol, matchVal);
-    if (byName) q1 = q1.ilike("name", name);
-    const { data: raced } = await q1.maybeSingle();
+    const raced = await findCustomer();
     const racedId = (raced as { id: string } | null)?.id;
     if (racedId) return { ok: true, id: racedId, existed: true };
   }

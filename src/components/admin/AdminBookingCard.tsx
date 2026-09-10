@@ -9,6 +9,10 @@ import { fitFrom, sortSlots } from "@/lib/scheduling";
 import { bookingLink } from "@/lib/shareLinks";
 import { buildBookingShareText } from "@/lib/bookingShare";
 import { buildPaymentShareText } from "@/lib/paymentShare";
+import {
+  buildBookingNoticeText,
+  type NoticeKind,
+} from "@/lib/bookingNotice";
 import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
@@ -16,7 +20,6 @@ import {
   confirmBooking,
   declineBooking,
   dismissRequest,
-  proposeTimes,
 } from "@/app/admin/actions";
 
 interface Props {
@@ -62,9 +65,9 @@ export function AdminBookingCard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState(booking.admin_message ?? "");
-  const [showOffer, setShowOffer] = useState(false);
-  const [offerSlots, setOfferSlots] = useState<string[]>([]);
   const [showChangeTime, setShowChangeTime] = useState(false);
+  // 방금 처리한 내용을 손님에게 보낼 안내 (없으면 패널을 숨긴다)
+  const [noticeKind, setNoticeKind] = useState<NoticeKind | null>(null);
   const [changeSlot, setChangeSlot] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   // 시술별 최종 금액 — 실제로 받은 돈은 시술 후에야 정해진다.
@@ -80,11 +83,18 @@ export function AdminBookingCard({
   const a = dict.admin;
   const isEn = locale === "en";
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  function run(
+    fn: () => Promise<{ ok: boolean; error?: string }>,
+    notice?: NoticeKind,
+  ) {
     setErr("");
     startTransition(async () => {
       const res = await fn();
-      if (res.ok) router.refresh();
+      if (res.ok) {
+        // 처리하고 나면 손님에게 알리는 걸 잊기 쉽다. 바로 보낼 수 있게 띄운다.
+        if (notice) setNoticeKind(notice);
+        router.refresh();
+      }
       else
         setErr(
           res.error === "SLOT_TAKEN"
@@ -146,74 +156,44 @@ export function AdminBookingCard({
     );
   }, [openSlots, booking]);
 
-  // 다른 시간 제안 — 확인 대기든 확정된 예약이든 같은 UI 를 쓴다.
-  // 손님이 고르기 전까지 기존 확정 시간은 그대로 유지된다.
-  const proposeUI = (
-    <>
-      <button
-        onClick={() => setShowOffer((v) => !v)}
-        className="text-sm font-medium text-brand-600"
-      >
-        {showOffer ? "\u2303" : "\u2304"} {a.proposeOther}
-      </button>
-      {showOffer && (
-        <div className="mt-1 rounded-md border border-brand-100 p-2">
-          <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
-          {changeCandidates.length === 0 ? (
-            <p className="text-xs text-muted">{a.noOtherChosenTimes}</p>
-          ) : (
-            <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
-              {changeCandidates.map((c) => {
-                const on = offerSlots.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() =>
-                      setOfferSlots((prev) =>
-                        on ? prev.filter((x) => x !== c.id) : [...prev, c.id],
-                      )
-                    }
-                    className={`rounded-md border px-2.5 py-1.5 text-xs ${
-                      on
-                        ? "border-brand-600 bg-brand-600 text-white"
-                        : "border-brand-200 bg-white text-brand-900"
-                    }`}
-                  >
-                    {formatDateTime(c.starts_at, locale)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={2}
-            className="mt-2 w-full rounded-md border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
-          />
-          <button
-            disabled={pending || offerSlots.length === 0}
-            onClick={() =>
-              run(() =>
-                proposeTimes({
-                  bookingId: booking.id,
-                  slotIds: offerSlots,
-                  message,
-                }),
-              )
-            }
-            className="mt-2 w-full rounded-md bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-          >
-            {a.proposeSend}
-          </button>
-        </div>
-      )}
-    </>
-  );
-
   return (
     <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
       {/* 헤더 */}
+      {/* 방금 처리한 내용을 손님에게 보내기 — 잊기 쉬운 단계라 눈에 띄게 둔다 */}
+      {noticeKind && (
+        <div className="mb-3 rounded-md border border-brand-600 bg-brand-50 p-3">
+          <p className="text-sm font-bold text-brand-900">{a.sendNoticeTitle}</p>
+          <p className="mt-0.5 text-xs text-muted">{a.sendNoticeHint}</p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <ShareButtons
+              url={bookingLink(baseUrl, booking.code)}
+              text={buildBookingNoticeText({
+                kind: noticeKind,
+                shopName,
+                locale,
+                currency,
+                location,
+                confirmedAddress,
+                confirmedIso: booking.confirmed_slot?.starts_at ?? null,
+                preferredIso: booking.preferred_slot?.starts_at ?? null,
+                services: booking.services,
+                total:
+                  (booking.final_price ?? booking.estimated_total) +
+                  (booking.tip ?? 0),
+                message,
+              })}
+              dict={dict}
+            />
+            <button
+              onClick={() => setNoticeKind(null)}
+              className="shrink-0 text-xs text-muted"
+            >
+              {dict.common.close}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 이 카드에서 가장 먼저 읽어야 하는 것은 언제인가 — 맨 위에 크게 둔다 */}
       {booking.confirmed_slot && (
         <p className="mb-2 text-[17px] font-bold text-brand-900">
@@ -307,6 +287,7 @@ export function AdminBookingCard({
                 onClick={() =>
                   run(() =>
                     cancelBooking({ bookingId: booking.id, message }),
+                    "cancelled",
                   )
                 }
                 className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
@@ -408,6 +389,7 @@ export function AdminBookingCard({
                         slotId: slot.id,
                         message,
                       }),
+                      "confirmed",
                     )
                   }
                   className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
@@ -427,13 +409,12 @@ export function AdminBookingCard({
             className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
 
-          {proposeUI}
-
           <button
             disabled={pending}
             onClick={() =>
               run(() =>
                 declineBooking({ bookingId: booking.id, message }),
+                "declined",
               )
             }
             className="w-full rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
@@ -457,7 +438,9 @@ export function AdminBookingCard({
             </button>
             <button
               disabled={pending}
-              onClick={() => run(() => cancelBooking({ bookingId: booking.id }))}
+              onClick={() =>
+                run(() => cancelBooking({ bookingId: booking.id }), "cancelled")
+              }
               className="flex-1 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
             >
               {a.cancelBooking}
@@ -467,8 +450,6 @@ export function AdminBookingCard({
             <p className="text-[11px] text-muted">{a.completeEarlyNote}</p>
           )}
           {/* 손님에게 다른 시간을 제안 — 손님이 고른다 */}
-          {proposeUI}
-
           {/* 사장님이 직접 옮긴다 */}
           <button
             onClick={() => setShowChangeTime((v) => !v)}
@@ -504,6 +485,7 @@ export function AdminBookingCard({
                       slotId: changeSlot,
                       message,
                     }),
+                    "changed",
                   )
                 }
                 className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
