@@ -60,6 +60,7 @@ export function BookingManager({
   paymentText,
   etransferEmail,
   etransferNote,
+  paymentHeadline,
 }: {
   bookings: BookingWithSlots[];
   openSlots: AvailabilitySlot[];
@@ -79,6 +80,7 @@ export function BookingManager({
   paymentText: string;
   etransferEmail: string;
   etransferNote: string;
+  paymentHeadline: string;
 }) {
   const a = dict.admin;
   const nowIso = new Date().toISOString();
@@ -149,6 +151,7 @@ export function BookingManager({
       paymentText={paymentText}
       etransferEmail={etransferEmail}
       etransferNote={etransferNote}
+      paymentHeadline={paymentHeadline}
     />
   );
 
@@ -199,6 +202,7 @@ export function BookingManager({
                       paymentText,
                       etransferEmail,
                       etransferNote,
+                      headline: paymentHeadline,
                     })
                   : buildBookingNoticeText({
                       kind: notice.kind,

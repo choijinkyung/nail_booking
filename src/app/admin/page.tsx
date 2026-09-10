@@ -66,6 +66,7 @@ export default async function AdminDashboardPage() {
         }))}
         paymentText={locale === "en" ? settings.payment_en : settings.payment_ko}
         etransferEmail={settings.etransfer_email}
+        paymentHeadline={settings.msg_payment}
         etransferNote={
           locale === "en" ? settings.etransfer_note_en : settings.etransfer_note_ko
         }

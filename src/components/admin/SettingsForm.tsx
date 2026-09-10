@@ -11,6 +11,7 @@ import {
 } from "@/app/admin/actions";
 import type { Dict, Locale } from "@/lib/i18n";
 import { defaultHeadline } from "@/lib/bookingNotice";
+import { defaultPaymentHeadline } from "@/lib/paymentShare";
 import type { Settings } from "@/lib/types";
 
 export function SettingsForm({
@@ -64,12 +65,38 @@ export function SettingsForm({
         </Section>
 
         <Section title={a.secMessages}>
-          <p className="mb-3 text-xs text-muted">{a.secMessagesHint}</p>
+          <p className="mb-2 text-xs text-muted">{a.secMessagesHint}</p>
+
+          {/* 첫 줄만 고칠 수 있으니, 실제로 어떻게 나가는지 통째로 보여준다 */}
+          <div className="mb-4 rounded-md bg-surface p-3">
+            <p className="mb-2 text-xs font-semibold text-brand-900">
+              {a.msgPreviewTitle}
+            </p>
+            <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-muted">
+{`${settings.msg_confirmed || defaultHeadline("confirmed", locale)}
+${a.msgPreviewBody}`}
+            </pre>
+            <p className="mt-2 text-[11px] text-muted">{a.msgPreviewNote}</p>
+          </div>
           <Group title={a.msgInvite}>
             <Area
               name="msg_invite"
               label=""
               def={settings.msg_invite || a.shareMsgBook}
+              cls={input}
+            />
+          </Group>
+          <Group title={a.msgPayment}>
+            <Area
+              name="msg_payment"
+              label=""
+              def={
+                settings.msg_payment ||
+                defaultPaymentHeadline(
+                  locale === "en" ? settings.shop_name_en : settings.shop_name_ko,
+                  locale,
+                )
+              }
               cls={input}
             />
           </Group>

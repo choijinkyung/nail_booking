@@ -158,5 +158,6 @@ export interface Settings {
   msg_changed: string;
   msg_declined: string;
   msg_cancelled: string;
+  msg_payment: string;
   updated_at: string;
 }

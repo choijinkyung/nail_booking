@@ -36,6 +36,7 @@ interface Props {
   paymentText: string;
   etransferEmail: string;
   etransferNote: string;
+  paymentHeadline: string;
 }
 
 
@@ -62,6 +63,7 @@ export function AdminBookingCard({
   paymentText,
   etransferEmail,
   etransferNote,
+  paymentHeadline,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -670,6 +672,7 @@ export function AdminBookingCard({
                 paymentText,
                 etransferEmail,
                 etransferNote,
+                headline: paymentHeadline,
               })}
               dict={dict}
               compact

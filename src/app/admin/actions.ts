@@ -1180,6 +1180,7 @@ export async function saveSettings(
       msg_changed: get("msg_changed"),
       msg_declined: get("msg_declined"),
       msg_cancelled: get("msg_cancelled"),
+      msg_payment: get("msg_payment"),
       etransfer_email: get("etransfer_email"),
       etransfer_note_ko: get("etransfer_note_ko"),
       etransfer_note_en: get("etransfer_note_en"),

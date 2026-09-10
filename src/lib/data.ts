@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   msg_changed: "",
   msg_declined: "",
   msg_cancelled: "",
+  msg_payment: "",
   updated_at: "",
 };
 

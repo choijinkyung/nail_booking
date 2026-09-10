@@ -2,6 +2,11 @@ import type { Locale } from "./i18n";
 import { formatMoney } from "./format";
 import type { ShareServiceLine } from "./bookingShare";
 
+/** 결제 안내의 기본 첫 줄. 설정 화면이 이걸 미리 채워 보여준다. */
+export function defaultPaymentHeadline(shopName: string, locale: Locale): string {
+  return locale === "en" ? `${shopName} — payment` : `${shopName} 결제 안내`;
+}
+
 /**
  * 시술이 끝난 뒤 손님에게 보내는 결제 안내 문구.
  * 이메일이 없는 손님이 많아 메일로는 닿지 않으므로, 카카오톡으로
@@ -16,12 +21,15 @@ export function buildPaymentShareText(input: {
   paymentText: string;
   etransferEmail: string;
   etransferNote: string;
+  /** 설정에서 사장님이 쓴 첫 줄. 비어 있으면 기본 문구. */
+  headline?: string;
 }): string {
   const isEn = input.locale === "en";
   const lines: string[] = [];
 
   lines.push(
-    isEn ? `${input.shopName} — payment` : `${input.shopName} 결제 안내`,
+    (input.headline ?? "").trim() ||
+      defaultPaymentHeadline(input.shopName, input.locale),
   );
   lines.push("");
 
