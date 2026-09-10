@@ -31,6 +31,8 @@ export function BookingActions({
   const [message, setMessage] = useState("");
   const [proposedPick, setProposedPick] = useState("");
   const [rePicked, setRePicked] = useState<string[]>([]);
+  // 변경 요청 시 손님이 희망하는 새 시간 (선택 사항)
+  const [newPicked, setNewPicked] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const st = dict.status;
   const duration = bookingDurationMin(booking.services);
@@ -147,10 +149,13 @@ export function BookingActions({
         code: booking.code,
         kind,
         message,
+        // 취소 요청에는 희망 시간이 없다.
+        requestedSlotId: kind === "change" ? newPicked[0] : undefined,
       });
       if (res.ok) {
         setMode(null);
         setMessage("");
+        setNewPicked([]);
         router.refresh();
       } else {
         setErr(st.requestErr);
@@ -182,6 +187,30 @@ export function BookingActions({
           <p className="text-sm text-muted">
             {mode === "change" ? st.changeDesc : st.cancelDesc}
           </p>
+
+          {mode === "change" && (
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-sm font-semibold text-brand-900">
+                  {st.pickNewTime}
+                </p>
+                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-900">
+                  {dict.common.optional}
+                </span>
+              </div>
+              <TimePicker
+                slots={futureSlots}
+                durationMin={duration}
+                selected={newPicked}
+                onChange={setNewPicked}
+                dict={dict}
+                locale={locale}
+                single
+              />
+              <p className="mt-2 text-xs text-muted">{st.noNewTime}</p>
+            </div>
+          )}
+
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
