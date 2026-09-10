@@ -5,9 +5,12 @@ import type { Dict } from "@/lib/i18n";
 import { galleryLink, homeLink } from "@/lib/shareLinks";
 
 /**
- * 링크 하나에 대한 [공유] + [복사] 버튼.
- * 공유는 폰의 네이티브 공유 시트를 띄운다(카톡·문자·인스타 등).
- * navigator.share 가 없는 환경(데스크톱 브라우저 대부분)에서는 복사로 대체한다.
+ * 보낼 문구에 대한 [공유] + [복사] 버튼.
+ *
+ * 문구와 링크를 navigator.share 에 따로 넘기면 앱마다 처리가 달라
+ * 링크만 가져가고 문구를 버리는 곳이 있다(인스타그램 등). 링크를 문구
+ * 안에 넣어 **한 덩어리 텍스트**로 보내면 텍스트를 받는 곳이면 어디든
+ * 그대로 들어간다. 복사도 같은 문구 전체를 복사한다.
  */
 export function ShareButtons({
   url,
@@ -15,21 +18,23 @@ export function ShareButtons({
   dict,
   compact = false,
 }: {
-  url: string;
+  /** 함께 보낼 링크. 없으면 문구만 보낸다. */
+  url?: string;
   text: string;
   dict: Dict;
   compact?: boolean;
 }) {
   const a = dict.admin;
   const [copied, setCopied] = useState(false);
+  const payload = url ? `${text}\n${url}` : text;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(payload);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // 클립보드 권한이 없는 경우 — 사용자가 주소를 직접 선택할 수 있게 둔다.
+      // 클립보드 권한이 없는 경우 — 사용자가 직접 선택할 수 있게 둔다.
     }
   }
 
@@ -39,7 +44,7 @@ export function ShareButtons({
       return;
     }
     try {
-      await navigator.share({ text, url });
+      await navigator.share({ text: payload });
     } catch {
       // 사용자가 공유 시트를 닫은 경우 — 아무 일도 하지 않는다.
     }

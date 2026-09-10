@@ -661,7 +661,6 @@ export function AdminBookingCard({
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-brand-100 pt-3">
             <span className="text-xs text-muted">{a.sharePayment}</span>
             <ShareButtons
-              url={bookingLink(baseUrl, booking.code)}
               text={buildPaymentShareText({
                 shopName,
                 locale,

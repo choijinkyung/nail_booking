@@ -69,12 +69,5 @@ export function buildBookingShareText(input: {
     lines.push(`📍 ${place}`);
   }
 
-  lines.push("");
-  lines.push(
-    isEn
-      ? "You can check the details here:"
-      : "예약 내용은 아래 링크에서 확인하실 수 있어요.",
-  );
-
   return lines.join("\n");
 }

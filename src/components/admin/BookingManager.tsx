@@ -6,7 +6,6 @@ import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
 import { ShareButtons } from "./ShareLinks";
-import { bookingLink } from "@/lib/shareLinks";
 import { buildPaymentShareText } from "@/lib/paymentShare";
 import {
   buildBookingNoticeText,
@@ -202,7 +201,6 @@ export function BookingManager({
           <p className="mt-0.5 text-xs text-muted">{a.sendNoticeHint}</p>
           <div className="mt-2 flex items-center justify-between gap-2">
             <ShareButtons
-              url={bookingLink(baseUrl, noticeBooking.code)}
               text={
                 // 시술이 끝났으면 알려야 할 것은 일정이 아니라 결제다.
                 notice.kind === "completed"
