@@ -9,10 +9,7 @@ import { fitFrom, sortSlots } from "@/lib/scheduling";
 import { bookingLink } from "@/lib/shareLinks";
 import { buildBookingShareText } from "@/lib/bookingShare";
 import { buildPaymentShareText } from "@/lib/paymentShare";
-import {
-  buildBookingNoticeText,
-  type NoticeKind,
-} from "@/lib/bookingNotice";
+import type { NoticeKind } from "@/lib/bookingNotice";
 import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
@@ -33,6 +30,7 @@ interface Props {
   location: string;
   confirmedAddress: string;
   services: Service[];
+  onNotice?: (kind: NoticeKind) => void;
   paymentText: string;
   etransferEmail: string;
   etransferNote: string;
@@ -58,6 +56,7 @@ export function AdminBookingCard({
   location,
   confirmedAddress,
   services,
+  onNotice,
   paymentText,
   etransferEmail,
   etransferNote,
@@ -66,8 +65,6 @@ export function AdminBookingCard({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState(booking.admin_message ?? "");
   const [showChangeTime, setShowChangeTime] = useState(false);
-  // 방금 처리한 내용을 손님에게 보낼 안내 (없으면 패널을 숨긴다)
-  const [noticeKind, setNoticeKind] = useState<NoticeKind | null>(null);
   const [changeSlot, setChangeSlot] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   // 시술별 최종 금액 — 실제로 받은 돈은 시술 후에야 정해진다.
@@ -91,8 +88,9 @@ export function AdminBookingCard({
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
-        // 처리하고 나면 손님에게 알리는 걸 잊기 쉽다. 바로 보낼 수 있게 띄운다.
-        if (notice) setNoticeKind(notice);
+        // 확정하면 이 카드는 다른 탭으로 옮겨가 사라진다. 안내 패널은
+        // 목록 바깥(BookingManager)에서 띄워야 살아남는다.
+        if (notice) onNotice?.(notice);
         router.refresh();
       }
       else
@@ -159,41 +157,6 @@ export function AdminBookingCard({
   return (
     <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
       {/* 헤더 */}
-      {/* 방금 처리한 내용을 손님에게 보내기 — 잊기 쉬운 단계라 눈에 띄게 둔다 */}
-      {noticeKind && (
-        <div className="mb-3 rounded-md border border-brand-600 bg-brand-50 p-3">
-          <p className="text-sm font-bold text-brand-900">{a.sendNoticeTitle}</p>
-          <p className="mt-0.5 text-xs text-muted">{a.sendNoticeHint}</p>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <ShareButtons
-              url={bookingLink(baseUrl, booking.code)}
-              text={buildBookingNoticeText({
-                kind: noticeKind,
-                shopName,
-                locale,
-                currency,
-                location,
-                confirmedAddress,
-                confirmedIso: booking.confirmed_slot?.starts_at ?? null,
-                preferredIso: booking.preferred_slot?.starts_at ?? null,
-                services: booking.services,
-                total:
-                  (booking.final_price ?? booking.estimated_total) +
-                  (booking.tip ?? 0),
-                message,
-              })}
-              dict={dict}
-            />
-            <button
-              onClick={() => setNoticeKind(null)}
-              className="shrink-0 text-xs text-muted"
-            >
-              {dict.common.close}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 이 카드에서 가장 먼저 읽어야 하는 것은 언제인가 — 맨 위에 크게 둔다 */}
       {booking.confirmed_slot && (
         <p className="mb-2 text-[17px] font-bold text-brand-900">

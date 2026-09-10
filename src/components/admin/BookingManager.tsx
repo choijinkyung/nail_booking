@@ -5,6 +5,12 @@ import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
+import { ShareButtons } from "./ShareLinks";
+import { bookingLink } from "@/lib/shareLinks";
+import {
+  buildBookingNoticeText,
+  type NoticeKind,
+} from "@/lib/bookingNotice";
 import { MiniCalendar } from "./MiniCalendar";
 
 type Tab = "pending" | "upcoming" | "past";
@@ -126,6 +132,15 @@ export function BookingManager({
   );
   // 한 번에 하나만 펼친다 — 여러 개가 동시에 열려 있으면 목록이 안 보인다.
   const [openId, setOpenId] = useState<string | null>(null);
+  // 방금 처리한 예약의 안내. 확정하면 카드가 다른 탭으로 옮겨가므로
+  // 안내는 목록 바깥에서 들고 있어야 사라지지 않는다.
+  const [notice, setNotice] = useState<{
+    bookingId: string;
+    kind: NoticeKind;
+  } | null>(null);
+  const noticeBooking = notice
+    ? (bookings.find((b) => b.id === notice.bookingId) ?? null)
+    : null;
   const [upSel, setUpSel] = useState(today);
   const [pastSel, setPastSel] = useState(today);
   const [showOther, setShowOther] = useState(false);
@@ -143,6 +158,7 @@ export function BookingManager({
       location={location}
       confirmedAddress={confirmedAddress}
       services={services}
+      onNotice={(kind) => setNotice({ bookingId: b.id, kind })}
       paymentText={paymentText}
       etransferEmail={etransferEmail}
       etransferNote={etransferNote}
@@ -174,6 +190,44 @@ export function BookingManager({
 
   return (
     <div>
+      {/* 방금 처리한 내용을 손님에게 보내기 — 확정하면 카드가 다른 탭으로
+          옮겨가므로, 안내는 목록 바깥인 여기서 띄운다. */}
+      {notice && noticeBooking && (
+        <div className="mb-4 rounded-md border border-brand-600 bg-brand-50 p-3">
+          <p className="text-sm font-bold text-brand-900">
+            {a.sendNoticeTitle} · {noticeBooking.customer_name}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">{a.sendNoticeHint}</p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <ShareButtons
+              url={bookingLink(baseUrl, noticeBooking.code)}
+              text={buildBookingNoticeText({
+                kind: notice.kind,
+                shopName,
+                locale,
+                currency,
+                location,
+                confirmedAddress,
+                confirmedIso: noticeBooking.confirmed_slot?.starts_at ?? null,
+                preferredIso: noticeBooking.preferred_slot?.starts_at ?? null,
+                services: noticeBooking.services,
+                total:
+                  (noticeBooking.final_price ?? noticeBooking.estimated_total) +
+                  (noticeBooking.tip ?? 0),
+                message: noticeBooking.admin_message ?? "",
+              })}
+              dict={dict}
+            />
+            <button
+              onClick={() => setNotice(null)}
+              className="shrink-0 text-xs text-muted"
+            >
+              {dict.common.close}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 손님 요청 — 항상 최상단 */}
       {requests.length > 0 && (
         <section className="mt-5">
