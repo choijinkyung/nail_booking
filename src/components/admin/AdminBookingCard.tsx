@@ -7,6 +7,7 @@ import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { fitFrom, sortSlots } from "@/lib/scheduling";
 import { bookingLink } from "@/lib/shareLinks";
+import { buildBookingShareText } from "@/lib/bookingShare";
 import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
@@ -25,6 +26,8 @@ interface Props {
   locale: Locale;
   currency: string;
   baseUrl: string;
+  shopName: string;
+  location: string;
 }
 
 // 임시: 확인 대기의 '다른 시간 제안 / 가능시간 안내' UI를 화면에서 숨김 (코드는 유지)
@@ -45,6 +48,8 @@ export function AdminBookingCard({
   locale,
   currency,
   baseUrl,
+  shopName,
+  location,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -160,7 +165,18 @@ export function AdminBookingCard({
           <span className="mt-1.5 flex justify-end">
             <ShareButtons
               url={bookingLink(baseUrl, booking.code)}
-              text={a.shareMsgBooking}
+              text={buildBookingShareText({
+                shopName,
+                locale,
+                currency,
+                location,
+                confirmedIso: booking.confirmed_slot?.starts_at ?? null,
+                preferredIso: booking.preferred_slot?.starts_at ?? null,
+                services: booking.services,
+                total:
+                  (booking.final_price ?? booking.estimated_total) +
+                  (booking.tip ?? 0),
+              })}
               dict={dict}
               compact
             />

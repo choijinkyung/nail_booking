@@ -36,6 +36,8 @@ export default async function AdminDashboardPage() {
         locale={locale}
         currency={settings.currency}
         baseUrl={baseUrl}
+        shopName={locale === "en" ? settings.shop_name_en : settings.shop_name_ko}
+        location={locale === "en" ? settings.location_en : settings.location_ko}
       />
     </AdminShell>
   );
