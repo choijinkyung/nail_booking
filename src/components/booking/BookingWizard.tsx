@@ -375,6 +375,15 @@ export function BookingWizard(props: Props) {
         {/* Step 3: 정보 */}
         {step === 3 && (
           <div className="space-y-4">
+            {/* 방문 전 안내 — 정보를 적기 전에 먼저 읽어야 하는 내용이다 */}
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+              <p className="font-bold">{dict.landing.noticeTitle}</p>
+              <p className="mt-1 whitespace-pre-line">{notice}</p>
+              <p className="mt-3 whitespace-pre-line border-t border-amber-200 pt-3">
+                {scheduleNote}
+              </p>
+            </div>
+
             <Field label={`${dict.booking.name} *`}>
               <input
                 value={name}
@@ -471,16 +480,6 @@ export function BookingWizard(props: Props) {
                 </span>
               </span>
             </label>
-
-            {/* 방문 전 안내 — 확인 단계에서 이것만 눈에 들어오지 않도록
-                요청 내용을 훑기 전인 여기에 둔다. */}
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
-              <p className="font-bold">{dict.landing.noticeTitle}</p>
-              <p className="mt-1 whitespace-pre-line">{notice}</p>
-              <p className="mt-3 whitespace-pre-line border-t border-amber-200 pt-3">
-                {scheduleNote}
-              </p>
-            </div>
           </div>
         )}
 
