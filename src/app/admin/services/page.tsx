@@ -24,6 +24,7 @@ export default async function ServicesPage() {
       <ServicesManager
         services={services}
         dict={dict}
+        locale={locale}
         currency={settings.currency}
       />
     </AdminShell>

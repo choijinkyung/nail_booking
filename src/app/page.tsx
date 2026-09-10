@@ -51,7 +51,7 @@ export default async function LandingPage() {
           </p>
         </section>
 
-        {/* ⏰ 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
+        {/* 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
         <section className="mt-6">
           <div className="space-y-2">
             <NoticeBanner

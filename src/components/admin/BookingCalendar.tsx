@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { BookingStatus, BookingWithSlots, Service } from "@/lib/types";
 import type { BlockSlot } from "@/lib/data";
-import { formatDuration, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
+import {
+  formatDateHeading,
+  formatDuration,
+  formatMoney,
+  formatTimeOnly,
+  slotDayKey,
+} from "@/lib/format";
 import { removeBlock } from "@/app/admin/actions";
 import { BlockForm } from "./BlockForm";
 import { NewBookingForm } from "./NewBookingForm";
@@ -286,7 +292,9 @@ export function BookingCalendar({
 
       {/* 선택한 날 상세 */}
       <div className="mt-5">
-        <h2 className="mb-2 text-sm font-bold text-brand-600">{selected}</h2>
+        <h2 className="mb-2 text-[15px] font-bold text-brand-900">
+          {formatDateHeading(`${selected}T12:00:00Z`, locale)}
+        </h2>
 
         {/* 이 날짜에 대한 관리자 작업 */}
         <div className="mb-3 flex gap-2">
@@ -294,13 +302,13 @@ export function BookingCalendar({
             onClick={() => setPane((p) => (p === "booking" ? "none" : "booking"))}
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white"
           >
-            ➕ {dict.admin.newBooking}
+            {dict.admin.newBooking}
           </button>
           <button
             onClick={() => setPane((p) => (p === "block" ? "none" : "block"))}
             className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-900"
           >
-            ⛔ {dict.admin.addBlock}
+            {dict.admin.addBlock}
           </button>
         </div>
 

@@ -48,7 +48,7 @@ export function SettingsForm({
           <Area name="hero_sub_en" label={a.en} def={settings.hero_sub_en} cls={input} />
         </Group>
 
-        <Group title={`⏰ ${a.scheduleNote}`}>
+        <Group title={`${a.scheduleNote}`}>
           <Area name="schedule_note_ko" label={a.ko} def={settings.schedule_note_ko} cls={input} />
           <Area name="schedule_note_en" label={a.en} def={settings.schedule_note_en} cls={input} />
         </Group>

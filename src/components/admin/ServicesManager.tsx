@@ -2,17 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Dict } from "@/lib/i18n";
+import type { Dict, Locale } from "@/lib/i18n";
+import { formatDuration, formatServicePrice } from "@/lib/format";
 import type { Service, ServiceUnit } from "@/lib/types";
 import { addService, deleteService, saveService } from "@/app/admin/actions";
 
 export function ServicesManager({
   services,
   dict,
+  locale,
   currency,
 }: {
   services: Service[];
   dict: Dict;
+  locale: Locale;
   currency: string;
 }) {
   const router = useRouter();
@@ -27,12 +30,13 @@ export function ServicesManager({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-brand-100 border-y border-brand-100">
       {services.map((s) => (
         <ServiceRow
           key={s.id}
           service={s}
           dict={dict}
+          locale={locale}
           currency={currency}
           pending={pending}
           onSave={(payload) => run(() => saveService(payload))}
@@ -54,6 +58,7 @@ export function ServicesManager({
 function ServiceRow({
   service,
   dict,
+  locale,
   currency,
   pending,
   onSave,
@@ -61,6 +66,7 @@ function ServiceRow({
 }: {
   service: Service;
   dict: Dict;
+  locale: Locale;
   currency: string;
   pending: boolean;
   onSave: (p: {
@@ -84,6 +90,8 @@ function ServiceRow({
   const [duration, setDuration] = useState(String(service.duration_min));
   const [active, setActive] = useState(service.active);
   const [saved, setSaved] = useState(false);
+  // 편집 폼을 전부 펼쳐 두면 시술 몇 개만 있어도 화면이 끝없이 길어진다.
+  const [open, setOpen] = useState(false);
 
   const dirty =
     nameKo !== service.name_ko ||
@@ -98,7 +106,38 @@ function ServiceRow({
     "w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400";
 
   return (
-    <div className="rounded-lg border border-brand-100 bg-white p-4">
+    <div className="py-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 py-3 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-brand-900">
+            {nameKo || nameEn}
+            {!active && (
+              <span className="ml-2 text-[12px] font-normal text-muted">
+                {a.hidden}
+              </span>
+            )}
+          </span>
+          <span className="mt-0.5 block text-[13px] text-muted">
+            {formatDuration(Number(duration) || 0, locale)}
+          </span>
+        </span>
+        <span className="shrink-0 font-semibold text-brand-900">
+          {formatServicePrice(Number(price) || 0, currency, priceFrom)}
+        </span>
+        <span
+          className={`shrink-0 text-brand-400 transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          ⌄
+        </span>
+      </button>
+
+      {!open ? null : (
+      <div className="pb-4">
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
           <span className="mb-1 block text-xs text-muted">{a.serviceNameKo}</span>
@@ -190,6 +229,8 @@ function ServiceRow({
           </button>
         </div>
       </div>
+      </div>
+      )}
     </div>
   );
 }

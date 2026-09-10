@@ -457,7 +457,7 @@ export function BookingWizard(props: Props) {
               />
               <span>
                 <span className="block text-sm font-bold text-brand-900">
-                  ⏰ {dict.booking.earlyContactTitle}
+                  {dict.booking.earlyContactTitle}
                 </span>
                 <span className="mt-0.5 block text-xs text-brand-900">
                   {dict.booking.earlyContactDesc}
@@ -511,7 +511,7 @@ export function BookingWizard(props: Props) {
               <p>{name}</p>
               <p className="text-muted">{contact}</p>
               {email && <p className="text-muted">{email}</p>}
-              {note && <p className="mt-1 whitespace-pre-line">📝 {note}</p>}
+              {note && <p className="mt-1 whitespace-pre-line">{note}</p>}
             </ReviewRow>
             <p className="px-1 text-xs text-muted">
               {dict.booking.estimatedNote}
@@ -521,7 +521,7 @@ export function BookingWizard(props: Props) {
             <div className="space-y-2 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
               <p className="whitespace-pre-line">⚠️ {notice}</p>
               <p className="whitespace-pre-line border-t border-amber-200 pt-2">
-                ⏰ {scheduleNote}
+                {scheduleNote}
               </p>
             </div>
             <label className="flex cursor-pointer items-start gap-3 rounded-md border border-brand-200 bg-white p-3">

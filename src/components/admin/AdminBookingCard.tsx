@@ -226,13 +226,13 @@ export function AdminBookingCard({
 
       {booking.note && (
         <p className="mt-2 whitespace-pre-line rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
-          📝 {booking.note}
+          {booking.note}
         </p>
       )}
 
       {booking.early_contact && (
         <p className="mt-2 rounded-lg border border-brand-300 bg-brand-50 p-2 text-sm font-semibold text-brand-900">
-          ⏰ {a.earlyContactBadge}
+          {a.earlyContactBadge}
         </p>
       )}
 
