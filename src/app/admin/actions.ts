@@ -29,6 +29,7 @@ import { generateCode } from "@/lib/code";
 import { buildServiceLines } from "@/lib/bookingLines";
 import { normalizePhone } from "@/lib/phone";
 import { isUsablePhone, nameKey } from "@/lib/customerKey";
+import { clampBuffer, occupiedMinutes } from "@/lib/buffer";
 import {
   clampWindowDays,
   plannedSlots,
@@ -100,12 +101,14 @@ export async function confirmBooking(input: {
   // 0) 예약 정보 (소요시간·기존 점유 슬롯)
   const { data: bRow } = await sb
     .from("bookings")
-    .select("services, occupied_slot_ids")
+    .select("services, occupied_slot_ids, buffer_min")
     .eq("id", input.bookingId)
     .single();
   if (!bRow) return { ok: false, error: "DB" };
-  const duration = bookingDurationMin(
-    (bRow as { services: BookingServiceLine[] }).services ?? [],
+  // 시간을 옮겨도 뒤에 두기로 한 여유시간은 함께 따라간다.
+  const duration = occupiedMinutes(
+    bookingDurationMin((bRow as { services: BookingServiceLine[] }).services ?? []),
+    (bRow as { buffer_min?: number }).buffer_min ?? 0,
   );
   const prevOcc =
     (bRow as { occupied_slot_ids: string[] }).occupied_slot_ids ?? [];
@@ -1411,4 +1414,117 @@ export async function sendTestEmail(): Promise<
   } catch (err) {
     return { ok: false, error: String(err) };
   }
+}
+
+/**
+ * 예약 뒤에 비워둘 여유시간을 정한다 (5분 단위).
+ *
+ * 예약 가능 시간이 30분 격자라, 실제로 잠기는 칸수는 시술시간+여유시간을
+ * 올림해 정해진다. 늘릴 때 필요한 칸이 이미 다른 예약에 잡혀 있으면
+ * 거절한다 — 뒤 손님의 자리를 말없이 뺏지 않는다.
+ */
+export async function setBookingBuffer(input: {
+  bookingId: string;
+  bufferMin: number;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const bufferMin = clampBuffer(input.bufferMin);
+
+  const { data: bRow } = await sb
+    .from("bookings")
+    .select("services, confirmed_slot_id, occupied_slot_ids, status")
+    .eq("id", input.bookingId)
+    .single();
+  const b = bRow as {
+    services: BookingServiceLine[];
+    confirmed_slot_id: string | null;
+    occupied_slot_ids: string[] | null;
+    status: string;
+  } | null;
+  if (!b) return { ok: false, error: "DB" };
+  if (b.status !== "confirmed" || !b.confirmed_slot_id)
+    return { ok: false, error: "NOT_CONFIRMED" };
+
+  const prevOcc = b.occupied_slot_ids ?? [];
+  const total = occupiedMinutes(bookingDurationMin(b.services ?? []), bufferMin);
+
+  // 시작 시각부터 필요한 만큼의 연속 칸을 다시 계산한다.
+  const { data: startRow } = await sb
+    .from("availability_slots")
+    .select("starts_at")
+    .eq("id", b.confirmed_slot_id)
+    .single();
+  const startsAt = (startRow as { starts_at: string } | null)?.starts_at;
+  if (!startsAt) return { ok: false, error: "DB" };
+
+  const wantIsos = slotStartsForDuration(
+    new Date(startsAt).toISOString(),
+    total,
+  );
+
+  // 이 예약이 이미 쓰던 칸은 잠깐 열어두고 계산해야 자기 자리와 충돌하지 않는다.
+  const { data: rows } = await sb
+    .from("availability_slots")
+    .select("id, starts_at, status")
+    .in("starts_at", wantIsos);
+  const found = (rows as { id: string; starts_at: string; status: string }[]) ?? [];
+  if (found.length !== wantIsos.length) return { ok: false, error: "NO_ROOM" };
+
+  const mine = new Set(prevOcc);
+  const blocked = found.filter((r) => !mine.has(r.id) && r.status !== "open");
+  if (blocked.length > 0) return { ok: false, error: "NO_ROOM" };
+
+  const wantIds = found.map((r) => r.id);
+  const toLock = wantIds.filter((id) => !mine.has(id));
+  const toRelease = prevOcc.filter((id) => !wantIds.includes(id));
+
+  if (toLock.length > 0) {
+    const { data: locked } = await sb
+      .from("availability_slots")
+      .update({ status: "booked" })
+      .in("id", toLock)
+      .eq("status", "open")
+      .select("id");
+    const lockedIds = ((locked as { id: string }[] | null) ?? []).map((r) => r.id);
+    if (lockedIds.length !== toLock.length) {
+      // 우리가 방금 잠근 것만 되돌린다.
+      if (lockedIds.length > 0)
+        await sb
+          .from("availability_slots")
+          .update({ status: "open" })
+          .in("id", lockedIds);
+      return { ok: false, error: "NO_ROOM" };
+    }
+  }
+
+  const { error } = await sb
+    .from("bookings")
+    .update({
+      buffer_min: bufferMin,
+      occupied_slot_ids: wantIds,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.bookingId);
+  if (error) {
+    if (toLock.length > 0)
+      await sb
+        .from("availability_slots")
+        .update({ status: "open" })
+        .in("id", toLock);
+    return { ok: false, error: "DB" };
+  }
+
+  if (toRelease.length > 0) {
+    await sb
+      .from("availability_slots")
+      .update({ status: "open" })
+      .in("id", toRelease)
+      .eq("status", "booked");
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/availability");
+  return { ok: true };
 }

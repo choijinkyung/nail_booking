@@ -81,6 +81,7 @@ export interface Booking {
   customer_name: string;
   customer_contact: string;
   customer_contact_norm: string;
+  buffer_min: number;
   customer_email: string;
   referral_source: string;
   final_price: number | null;

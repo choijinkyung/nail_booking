@@ -252,6 +252,10 @@ create index if not exists bookings_customer_name_lower_idx
 alter table public.settings
   add column if not exists confirmed_address text not null default '';
 
+-- 예약 뒤 여유시간 (마이그레이션 20260912000000 미러)
+alter table public.bookings
+  add column if not exists buffer_min int not null default 0;
+
 -- ── RLS: 브라우저에서 직접 접근 차단(앱은 service_role로만 접근) ──
 alter table public.services           enable row level security;
 alter table public.availability_slots enable row level security;

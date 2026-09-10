@@ -10,9 +10,11 @@ import { bookingLink } from "@/lib/shareLinks";
 import { buildBookingShareText } from "@/lib/bookingShare";
 import { buildPaymentShareText } from "@/lib/paymentShare";
 import type { NoticeKind } from "@/lib/bookingNotice";
+import { BUFFER_CHOICES } from "@/lib/buffer";
 import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
+  setBookingBuffer,
   completeBooking,
   confirmBooking,
   declineBooking,
@@ -97,9 +99,11 @@ export function AdminBookingCard({
         setErr(
           res.error === "SLOT_TAKEN"
             ? a.slotBookedWarn
-            : res.error === "NOT_STARTED"
-              ? a.completeTooEarly
-              : dict.booking.errGeneric,
+            : res.error === "NO_ROOM"
+              ? a.bufferNoRoom
+              : res.error === "NOT_STARTED"
+                ? a.completeTooEarly
+                : dict.booking.errGeneric,
         );
     });
   }
@@ -414,6 +418,30 @@ export function AdminBookingCard({
             <p className="text-[11px] text-muted">{a.completeEarlyNote}</p>
           )}
           {/* 손님에게 다른 시간을 제안 — 손님이 고른다 */}
+          {/* 뒤에 비워둘 여유시간 (정리·이동 시간) */}
+          <label className="flex items-center gap-2 text-sm text-brand-900">
+            {a.bufferLabel}
+            <select
+              value={booking.buffer_min ?? 0}
+              disabled={pending}
+              onChange={(e) =>
+                run(() =>
+                  setBookingBuffer({
+                    bookingId: booking.id,
+                    bufferMin: Number(e.target.value),
+                  }),
+                )
+              }
+              className="rounded-md border border-brand-200 bg-white px-2 py-1 text-sm disabled:opacity-40"
+            >
+              {BUFFER_CHOICES.map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? a.bufferNone : `${m}${a.minuteUnit}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {/* 사장님이 직접 옮긴다 */}
           <button
             onClick={() => setShowChangeTime((v) => !v)}
