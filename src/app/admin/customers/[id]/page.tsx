@@ -1,39 +1,38 @@
+import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
 import { getAllBookings, getCustomers, getSettings } from "@/lib/data";
-import { buildCustomerRow } from "@/lib/customerRows";
 import { AdminShell } from "@/components/admin/AdminShell";
-import {
-  CustomersManager,
-  type CustomerRow,
-} from "@/components/admin/CustomersManager";
+import { CustomerDetail } from "@/components/admin/CustomerDetail";
+import { buildCustomerRow } from "@/lib/customerRows";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCustomersPage() {
+export default async function CustomerDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   await requireAdminPage();
+  const { id } = await params;
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const isEn = locale === "en";
   const [customers, bookings, settings] = await Promise.all([
     getCustomers(),
     getAllBookings(),
     getSettings(),
   ]);
 
-  const rows: CustomerRow[] = customers.map((c) =>
-    buildCustomerRow(c, bookings, isEn),
-  );
+  const customer = customers.find((c) => c.id === id);
+  if (!customer) notFound();
 
   return (
     <AdminShell active="customers" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
-        {dict.admin.customersTitle}
-      </h1>
-      <CustomersManager
-        rows={rows}
+      <CustomerDetail
+        row={buildCustomerRow(customer, bookings, locale === "en")}
         dict={dict}
+        locale={locale}
         currency={settings.currency}
       />
     </AdminShell>

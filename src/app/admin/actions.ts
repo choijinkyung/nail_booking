@@ -966,10 +966,15 @@ export async function createCustomer(input: {
   return { ok: true, id: (created as { id: string }).id, existed: false };
 }
 
-/** 고객 부분 갱신. 전달된 필드만 바꾼다(연락처는 식별 키라 여기서 바꾸지 않음). */
+/**
+ * 고객 부분 갱신. 전달된 필드만 바꾼다.
+ * 연락처를 바꾸면 매칭 키(contact_norm)도 함께 갱신하며,
+ * 다른 고객과 같은 번호가 되면 DUPLICATE 로 거절한다.
+ */
 export async function updateCustomer(input: {
   customerId: string;
   name?: string;
+  contact?: string;
   email?: string;
   referral?: string;
   memo?: string;
@@ -982,6 +987,12 @@ export async function updateCustomer(input: {
   if (input.email !== undefined) patch.email = input.email.trim();
   if (input.referral !== undefined) patch.referral_source = input.referral.trim();
   if (input.memo !== undefined) patch.memo = input.memo.trim();
+  if (input.contact !== undefined) {
+    const contact = input.contact.trim();
+    if (!contact) return { ok: false, error: "INVALID" };
+    patch.contact = contact;
+    patch.contact_norm = normalizePhone(contact);
+  }
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const sb = createSupabaseAdminClient();
@@ -989,8 +1000,31 @@ export async function updateCustomer(input: {
     .from("customers")
     .update(patch)
     .eq("id", input.customerId);
-  if (error) return { ok: false, error: "DB" };
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "DUPLICATE" };
+    return { ok: false, error: "DB" };
+  }
 
+  revalidatePath("/admin/customers");
+  revalidatePath(`/admin/customers/${input.customerId}`);
+  return { ok: true };
+}
+
+/**
+ * 고객 삭제. 예약의 customer_id 는 FK 규칙으로 null 이 되지만,
+ * 예약에는 이름·연락처가 그대로 복사돼 있어 예약 기록 자체는 남는다.
+ */
+export async function deleteCustomer(input: {
+  customerId: string;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  if (!input.customerId) return { ok: false, error: "INVALID" };
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from("customers")
+    .delete()
+    .eq("id", input.customerId);
+  if (error) return { ok: false, error: "DB" };
   revalidatePath("/admin/customers");
   return { ok: true };
 }
