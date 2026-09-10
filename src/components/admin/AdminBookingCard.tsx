@@ -595,6 +595,7 @@ export function AdminBookingCard({
                     })),
                     tip: Number(tip) || 0,
                   }),
+                  "completed",
                 )
               }
               className="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"

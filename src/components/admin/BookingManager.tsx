@@ -7,6 +7,7 @@ import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
 import { ShareButtons } from "./ShareLinks";
 import { bookingLink } from "@/lib/shareLinks";
+import { buildPaymentShareText } from "@/lib/paymentShare";
 import {
   buildBookingNoticeText,
   type NoticeKind,
@@ -195,27 +196,45 @@ export function BookingManager({
       {notice && noticeBooking && (
         <div className="mb-4 rounded-md border border-brand-600 bg-brand-50 p-3">
           <p className="text-sm font-bold text-brand-900">
-            {a.sendNoticeTitle} · {noticeBooking.customer_name}
+            {notice.kind === "completed" ? a.sharePayment : a.sendNoticeTitle} ·{" "}
+            {noticeBooking.customer_name}
           </p>
           <p className="mt-0.5 text-xs text-muted">{a.sendNoticeHint}</p>
           <div className="mt-2 flex items-center justify-between gap-2">
             <ShareButtons
               url={bookingLink(baseUrl, noticeBooking.code)}
-              text={buildBookingNoticeText({
-                kind: notice.kind,
-                shopName,
-                locale,
-                currency,
-                location,
-                confirmedAddress,
-                confirmedIso: noticeBooking.confirmed_slot?.starts_at ?? null,
-                preferredIso: noticeBooking.preferred_slot?.starts_at ?? null,
-                services: noticeBooking.services,
-                total:
-                  (noticeBooking.final_price ?? noticeBooking.estimated_total) +
-                  (noticeBooking.tip ?? 0),
-                message: noticeBooking.admin_message ?? "",
-              })}
+              text={
+                // 시술이 끝났으면 알려야 할 것은 일정이 아니라 결제다.
+                notice.kind === "completed"
+                  ? buildPaymentShareText({
+                      shopName,
+                      locale,
+                      currency,
+                      services: noticeBooking.services,
+                      tip: noticeBooking.tip ?? 0,
+                      paymentText,
+                      etransferEmail,
+                      etransferNote,
+                    })
+                  : buildBookingNoticeText({
+                      kind: notice.kind,
+                      shopName,
+                      locale,
+                      currency,
+                      location,
+                      confirmedAddress,
+                      confirmedIso:
+                        noticeBooking.confirmed_slot?.starts_at ?? null,
+                      preferredIso:
+                        noticeBooking.preferred_slot?.starts_at ?? null,
+                      services: noticeBooking.services,
+                      total:
+                        (noticeBooking.final_price ??
+                          noticeBooking.estimated_total) +
+                        (noticeBooking.tip ?? 0),
+                      message: noticeBooking.admin_message ?? "",
+                    })
+              }
               dict={dict}
             />
             <button

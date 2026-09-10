@@ -2,7 +2,12 @@ import type { Locale } from "./i18n";
 import { buildBookingShareText, type ShareServiceLine } from "./bookingShare";
 
 /** 손님에게 보낼 안내의 종류. 처리 직후 무엇을 알릴지가 달라진다. */
-export type NoticeKind = "confirmed" | "changed" | "declined" | "cancelled";
+export type NoticeKind =
+  | "confirmed"
+  | "changed"
+  | "declined"
+  | "cancelled"
+  | "completed";
 
 const HEADLINE: Record<NoticeKind, { ko: string; en: string }> = {
   confirmed: {
@@ -21,6 +26,11 @@ const HEADLINE: Record<NoticeKind, { ko: string; en: string }> = {
     ko: "예약이 취소됐어요",
     en: "Your booking has been cancelled",
   },
+  // 완료 안내는 결제 문구(buildPaymentShareText)를 쓰므로 여기 값은 쓰이지 않는다.
+  completed: {
+    ko: "시술이 완료됐어요",
+    en: "All done",
+  },
 };
 
 const CLOSING: Record<NoticeKind, { ko: string; en: string }> = {
@@ -34,6 +44,7 @@ const CLOSING: Record<NoticeKind, { ko: string; en: string }> = {
     ko: "다음에 또 뵈어요.",
     en: "Hope to see you next time.",
   },
+  completed: { ko: "", en: "" },
 };
 
 /**
