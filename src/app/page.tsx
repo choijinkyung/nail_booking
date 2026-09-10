@@ -59,7 +59,10 @@ export default async function LandingPage() {
             >
               {scheduleNote}
             </NoticeBanner>
-            <NoticeBanner title={dict.landing.noticeTitle}>{notice}</NoticeBanner>
+            {/* 알레르기 안내는 접지 않는다 — 모르고 오시면 곤란해지는 내용이다 */}
+            <NoticeBanner title={dict.landing.noticeTitle} defaultOpen>
+              {notice}
+            </NoticeBanner>
           </div>
         </section>
 

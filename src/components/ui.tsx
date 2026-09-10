@@ -103,6 +103,7 @@ export function NoticeBanner({
           ⌄
         </span>
       </summary>
+
       <div className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-muted">
         {children}
       </div>
