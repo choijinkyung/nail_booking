@@ -2,6 +2,7 @@ import { getLocale } from "@/lib/locale";
 import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
 import { formatDuration, formatServicePrice, unitLabel } from "@/lib/format";
+import Link from "next/link";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ButtonLink, NoticeBanner, SectionTitle } from "@/components/ui";
 
@@ -36,7 +37,13 @@ export default async function LandingPage() {
             <h1 className="text-[32px] font-bold leading-tight text-brand-900">
               {heroTagline}
             </h1>
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex shrink-0 items-center gap-2">
+              <Link
+                href="/status"
+                className="rounded-md border border-brand-200 px-2.5 py-1 text-[13px] font-medium text-brand-900 hover:bg-brand-50"
+              >
+                {dict.landing.ctaLookup}
+              </Link>
               <LanguageToggle locale={locale} />
             </div>
           </div>
@@ -137,9 +144,6 @@ export default async function LandingPage() {
             rel="noreferrer"
           >
             {dict.landing.viewGallery}
-          </ButtonLink>
-          <ButtonLink href="/status" variant="ghost">
-            {dict.landing.ctaLookup}
           </ButtonLink>
         </section>
       </main>
