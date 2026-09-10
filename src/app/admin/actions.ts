@@ -567,40 +567,43 @@ export async function cancelBooking(input: {
   return { ok: true };
 }
 
+/**
+ * 시술 완료 처리. 시술별 최종 금액을 받아 예약의 시술 스냅샷에 반영하고
+ * 그 합을 최종 금액으로 삼는다. 실제로 받은 금액은 시술 후에야 정해지므로
+ * 예약 시점의 가격을 그대로 확정하지 않는다.
+ *
+ * 시작 시각 전이어도 관리자가 판단해 완료할 수 있다.
+ */
 export async function completeBooking(input: {
   bookingId: string;
-  finalPrice: number;
+  /** services 순서대로의 최종 금액 */
+  subtotals: number[];
   tip: number;
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
-  const finalPrice = Math.max(0, Number(input.finalPrice) || 0);
   const tip = Math.max(0, Number(input.tip) || 0);
 
-  // 아직 시작하지 않은(미래) 예약은 완료 처리 불가 — 시술 시작 시각 이후만 허용
   const { data: bRow } = await sb
     .from("bookings")
-    .select("confirmed_slot_id")
+    .select("services")
     .eq("id", input.bookingId)
     .single();
-  const confirmedSlotId = (bRow as { confirmed_slot_id?: string | null } | null)
-    ?.confirmed_slot_id;
-  if (confirmedSlotId) {
-    const { data: slotRow } = await sb
-      .from("availability_slots")
-      .select("starts_at")
-      .eq("id", confirmedSlotId)
-      .single();
-    const startsAt = (slotRow as { starts_at?: string } | null)?.starts_at;
-    if (startsAt && startsAt > new Date().toISOString()) {
-      return { ok: false, error: "NOT_STARTED" };
-    }
-  }
+  if (!bRow) return { ok: false, error: "DB" };
+
+  const lines = ((bRow as { services: BookingServiceLine[] }).services ?? []).map(
+    (l, i) => ({
+      ...l,
+      subtotal: Math.max(0, Number(input.subtotals?.[i]) || 0),
+    }),
+  );
+  const finalPrice = lines.reduce((sum, l) => sum + l.subtotal, 0);
 
   const { data, error } = await sb
     .from("bookings")
     .update({
       status: "completed",
+      services: lines,
       final_price: finalPrice,
       tip,
       completed_at: new Date().toISOString(),

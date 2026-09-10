@@ -3,6 +3,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getActiveServices, getSettings } from "@/lib/data";
 import { formatDuration, formatServicePrice, unitLabel } from "@/lib/format";
 import Link from "next/link";
+import { InstagramLink } from "@/components/InstagramLink";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ButtonLink, NoticeBanner, SectionTitle } from "@/components/ui";
 
@@ -34,10 +35,14 @@ export default async function LandingPage() {
         {/* Hero — 화면 맨 위가 곧 제목이고, 그 오른쪽이 언어 전환이다 */}
         <section className="pt-6">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-[32px] font-bold leading-tight text-brand-900">
+            <h1 className="min-w-0 text-[32px] font-bold leading-tight text-brand-900">
               {heroTagline}
             </h1>
             <div className="mt-1.5 flex shrink-0 items-center gap-2">
+              <InstagramLink
+                href="https://www.instagram.com/zena_12.7"
+                label={dict.landing.viewGallery}
+              />
               <Link
                 href="/status"
                 className="rounded-md border border-brand-200 px-2.5 py-1 text-[13px] font-medium text-brand-900 hover:bg-brand-50"
@@ -135,17 +140,6 @@ export default async function LandingPage() {
           <p className="text-[15px] leading-relaxed text-brand-900">{location}</p>
         </section>
 
-        <section className="mt-12 flex gap-2">
-          {/* 갤러리 기능 임시 비활성화 — '시술 사진 보기'는 인스타그램으로 이동 */}
-          <ButtonLink
-            href="https://www.instagram.com/zena_12.7"
-            variant="outline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {dict.landing.viewGallery}
-          </ButtonLink>
-        </section>
       </main>
 
       {/* 하단 고정 CTA */}

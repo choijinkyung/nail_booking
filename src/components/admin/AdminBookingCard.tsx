@@ -62,8 +62,9 @@ export function AdminBookingCard({
   const [changeSlot, setChangeSlot] = useState("");
   const [resent, setResent] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
-  const [finalPrice, setFinalPrice] = useState(
-    String(booking.estimated_total ?? 0),
+  // 시술별 최종 금액 — 실제로 받은 돈은 시술 후에야 정해진다.
+  const [subtotals, setSubtotals] = useState<string[]>(() =>
+    booking.services.map((l) => String(l.subtotal ?? 0)),
   );
   const [tip, setTip] = useState("0");
   const [err, setErr] = useState("");
@@ -495,35 +496,50 @@ export function AdminBookingCard({
       {/* 완료 처리: 금액 + 팁 입력 */}
       {booking.status === "confirmed" && showComplete && (
         <div className="mt-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/50 p-3">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted">
-                {a.finalPriceLabel} ({currency})
-              </span>
-              <input
-                value={finalPrice}
-                onChange={(e) => setFinalPrice(e.target.value)}
-                inputMode="decimal"
-                className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted">
-                {a.tipLabel} ({currency})
+          <p className="text-xs text-muted">{a.finalPriceHint}</p>
+
+          <ul className="divide-y divide-brand-100">
+            {booking.services.map((l, i) => (
+              <li key={i} className="flex items-center gap-3 py-2">
+                <span className="min-w-0 flex-1 text-sm text-brand-900">
+                  {isEn ? l.name_en : l.name_ko}
+                  {l.unit === "per_finger" && (
+                    <span className="text-muted"> ×{l.quantity}</span>
+                  )}
+                </span>
+                <input
+                  value={subtotals[i] ?? "0"}
+                  onChange={(e) =>
+                    setSubtotals((prev) =>
+                      prev.map((v, j) => (j === i ? e.target.value : v)),
+                    )
+                  }
+                  inputMode="decimal"
+                  aria-label={isEn ? l.name_en : l.name_ko}
+                  className="w-24 shrink-0 rounded-lg border border-brand-200 bg-white px-3 py-2 text-right text-sm"
+                />
+              </li>
+            ))}
+            <li className="flex items-center gap-3 py-2">
+              <span className="min-w-0 flex-1 text-sm text-muted">
+                {a.tipLabel}
               </span>
               <input
                 value={tip}
                 onChange={(e) => setTip(e.target.value)}
                 inputMode="decimal"
-                className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm"
+                aria-label={a.tipLabel}
+                className="w-24 shrink-0 rounded-lg border border-brand-200 bg-white px-3 py-2 text-right text-sm"
               />
-            </label>
-          </div>
-          <div className="flex justify-between px-1 text-sm font-semibold text-brand-900">
+            </li>
+          </ul>
+
+          <div className="flex justify-between border-t border-brand-200 pt-2 text-sm font-bold text-brand-900">
             <span>{dict.common.total}</span>
             <span>
               {formatMoney(
-                (Number(finalPrice) || 0) + (Number(tip) || 0),
+                subtotals.reduce((sum, v) => sum + (Number(v) || 0), 0) +
+                  (Number(tip) || 0),
                 currency,
               )}
             </span>
@@ -541,7 +557,7 @@ export function AdminBookingCard({
                 run(() =>
                   completeBooking({
                     bookingId: booking.id,
-                    finalPrice: Number(finalPrice) || 0,
+                    subtotals: subtotals.map((v) => Number(v) || 0),
                     tip: Number(tip) || 0,
                   }),
                 )
