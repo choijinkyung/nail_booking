@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   removeLogo,
   saveSettings,
+  sendTestEmail,
   uploadLogo,
   type ActionResult,
 } from "@/app/admin/actions";
@@ -56,6 +57,11 @@ export function SettingsForm({
       <Group title={a.location}>
         <Area name="location_ko" label={a.ko} def={settings.location_ko} cls={input} />
         <Area name="location_en" label={a.en} def={settings.location_en} cls={input} />
+      </Group>
+
+      <Group title={a.emailCheck}>
+        <p className="mb-2 text-xs text-muted">{a.emailCheckHint}</p>
+        <EmailCheck dict={dict} />
       </Group>
 
       <Group title={a.confirmedAddress}>
@@ -235,5 +241,44 @@ function Area({
       {label && <span className="mb-1 block text-xs text-muted">{label}</span>}
       <textarea name={name} defaultValue={def} rows={2} className={cls} />
     </label>
+  );
+}
+
+/** 이메일이 실제로 나가는지 눌러서 확인 — 실패 사유를 그대로 보여준다. */
+function EmailCheck({ dict }: { dict: Dict }) {
+  const a = dict.admin;
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setMsg(null);
+            const res = await sendTestEmail();
+            setMsg(
+              res.ok
+                ? { ok: true, text: `${a.testEmailSent} ${res.to}` }
+                : { ok: false, text: res.error },
+            );
+          })
+        }
+        className="rounded-md border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-900 disabled:opacity-40"
+      >
+        {pending ? a.syncing : a.sendTestEmail}
+      </button>
+      {msg && (
+        <p
+          className={`mt-2 whitespace-pre-line text-xs ${
+            msg.ok ? "text-green-700" : "text-red-600"
+          }`}
+        >
+          {msg.text}
+        </p>
+      )}
+    </div>
   );
 }

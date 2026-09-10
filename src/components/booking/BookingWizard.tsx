@@ -438,8 +438,8 @@ export function BookingWizard(props: Props) {
             </Field>
 
             {/* 디자인/재료 안내 — 원하는 디자인 첨부 유도 + 사전 컨펌 책임 */}
-            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
-              <p className="font-bold">🎨 {dict.booking.designNoticeTitle}</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+              <p className="font-bold">{dict.booking.designNoticeTitle}</p>
               <p className="mt-1 whitespace-pre-line">
                 {dict.booking.designNotice}
               </p>
@@ -455,7 +455,7 @@ export function BookingWizard(props: Props) {
             </Field>
 
             {/* 일찍 시술 가능 시 연락받기 — 눈에 띄게 강조 */}
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border-2 border-brand-400 bg-brand-50 p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-brand-200 bg-surface p-4">
               <input
                 type="checkbox"
                 checked={earlyContact}
@@ -471,6 +471,16 @@ export function BookingWizard(props: Props) {
                 </span>
               </span>
             </label>
+
+            {/* 방문 전 안내 — 확인 단계에서 이것만 눈에 들어오지 않도록
+                요청 내용을 훑기 전인 여기에 둔다. */}
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+              <p className="font-bold">{dict.landing.noticeTitle}</p>
+              <p className="mt-1 whitespace-pre-line">{notice}</p>
+              <p className="mt-3 whitespace-pre-line border-t border-amber-200 pt-3">
+                {scheduleNote}
+              </p>
+            </div>
           </div>
         )}
 
@@ -524,13 +534,6 @@ export function BookingWizard(props: Props) {
               {dict.booking.estimatedNote}
             </p>
 
-            {/* 마지막 확인: 반려동물 안내 + 예약시간 변경 가능 안내 */}
-            <div className="space-y-2 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-              <p className="whitespace-pre-line">⚠️ {notice}</p>
-              <p className="whitespace-pre-line border-t border-amber-200 pt-2">
-                {scheduleNote}
-              </p>
-            </div>
             <label className="flex cursor-pointer items-start gap-3 rounded-md border border-brand-200 bg-white p-3">
               <input
                 type="checkbox"

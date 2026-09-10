@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Dict } from "@/lib/i18n";
-import { bookLink, galleryLink } from "@/lib/shareLinks";
+import { galleryLink, homeLink } from "@/lib/shareLinks";
 
 /**
  * 링크 하나에 대한 [공유] + [복사] 버튼.
@@ -74,7 +74,7 @@ export function ShareLinks({
 }) {
   const a = dict.admin;
   const rows = [
-    { label: a.shareBook, url: bookLink(baseUrl), text: a.shareMsgBook },
+    { label: a.shareBook, url: homeLink(baseUrl), text: a.shareMsgBook },
     { label: a.shareGallery, url: galleryLink(baseUrl), text: a.shareMsgGallery },
   ];
 

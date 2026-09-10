@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
-import { slotDayKey } from "@/lib/format";
+import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
 import { MiniCalendar } from "./MiniCalendar";
 
@@ -120,7 +120,7 @@ export function BookingManager({
   const [pastSel, setPastSel] = useState(today);
   const [showOther, setShowOther] = useState(false);
 
-  const render = (b: BookingWithSlots) => (
+  const card = (b: BookingWithSlots) => (
     <AdminBookingCard
       key={b.id}
       booking={b}
@@ -133,6 +133,18 @@ export function BookingManager({
       location={location}
       confirmedAddress={confirmedAddress}
     />
+  );
+
+  // 목록에서는 접어 두고, 누르면 카드를 편다.
+  const render = (b: BookingWithSlots) => (
+    <CollapsibleBooking
+      key={b.id}
+      booking={b}
+      locale={locale}
+      currency={currency}
+    >
+      {card(b)}
+    </CollapsibleBooking>
   );
 
   const upSelCards = upcomingByDay.get(upSel) ?? [];
@@ -208,18 +220,18 @@ export function BookingManager({
             </p>
           ) : (
             <>
-              {/* 다가오는 2일 */}
+              {/* 다가오는 2일 — 접힌 목록 */}
               {next2.length > 0 && (
-                <div className="mb-5">
-                  <h3 className="mb-2 text-sm font-bold text-brand-500">
+                <div className="mb-8">
+                  <h3 className="mb-1 text-[15px] font-bold text-brand-900">
                     {a.next2days}
                   </h3>
-                  <div className="space-y-3">{next2.map(render)}</div>
+                  <div>{next2.map(render)}</div>
                 </div>
               )}
 
-              {/* 이후 일정 — 캘린더 */}
-              <h3 className="mb-2 text-sm font-bold text-brand-500">
+              {/* 이후 일정 — 캘린더가 주인공 */}
+              <h3 className="mb-2 text-[15px] font-bold text-brand-900">
                 {a.laterSectionTitle}
               </h3>
               <MiniCalendar
@@ -230,7 +242,7 @@ export function BookingManager({
                 dict={dict}
                 locale={locale}
               />
-              <div className="mt-4 space-y-3">
+              <div className="mt-4">
                 {upSelCards.length === 0 ? (
                   <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
                     {a.selectDayHint}
@@ -297,5 +309,68 @@ export function BookingManager({
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * 예약 한 건을 한 줄로 접어서 보여주고, 누르면 카드 전체를 편다.
+ * 여러 건이 모두 펼쳐져 있으면 무엇이 몇 건인지 한눈에 안 들어온다.
+ */
+function CollapsibleBooking({
+  booking,
+  locale,
+  currency,
+  children,
+}: {
+  booking: BookingWithSlots;
+  locale: Locale;
+  currency: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const iso = bookingIso(booking);
+  const services = booking.services
+    .map((l) => (locale === "en" ? l.name_en : l.name_ko))
+    .join(", ");
+  const amount =
+    booking.status === "completed"
+      ? (booking.final_price ?? booking.estimated_total) + (booking.tip ?? 0)
+      : booking.estimated_total;
+
+  if (open) {
+    return (
+      <div>
+        {children}
+        <button
+          onClick={() => setOpen(false)}
+          className="mt-1 w-full py-2 text-center text-xs text-muted"
+        >
+          {"\u2303"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setOpen(true)}
+      className="flex w-full items-center gap-3 border-b border-brand-100 py-3 text-left last:border-0"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-brand-900">
+          {iso ? formatTimeOnly(iso, locale) : "-"}
+          <span className="ml-2 font-normal">{booking.customer_name}</span>
+        </span>
+        <span className="mt-0.5 block truncate text-[13px] text-muted">
+          {services}
+        </span>
+      </span>
+      <span className="shrink-0 text-sm font-semibold text-brand-900">
+        {formatMoney(amount, currency)}
+      </span>
+      <span className="shrink-0 text-brand-400" aria-hidden>
+        {"\u2304"}
+      </span>
+    </button>
   );
 }

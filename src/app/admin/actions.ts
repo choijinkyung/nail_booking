@@ -1404,3 +1404,52 @@ export async function removeDayOff(input: {
   if (error) return { ok: false, error: "DB" };
   return syncGeneratedSlots();
 }
+
+/**
+ * 이메일 설정 점검 — 실제로 한 통 보내보고 결과를 그대로 돌려준다.
+ * 발송 실패는 조용히 넘어가도록 되어 있어(예약 처리를 막지 않으려고),
+ * 설정이 잘못돼도 알 방법이 없었다. 이 액션이 그 눈을 만들어준다.
+ */
+export async function sendTestEmail(): Promise<
+  { ok: true; to: string } | { ok: false; error: string }
+> {
+  await assertAdmin();
+  const key = process.env.RESEND_API_KEY ?? "";
+  const to = process.env.ADMIN_NOTIFICATION_EMAIL ?? "";
+  const from =
+    process.env.EMAIL_FROM ?? "Zenna Nail <onboarding@resend.dev>";
+
+  if (!key) return { ok: false, error: "RESEND_API_KEY 가 설정되지 않았어요." };
+  if (!to)
+    return {
+      ok: false,
+      error: "ADMIN_NOTIFICATION_EMAIL 이 설정되지 않았어요.",
+    };
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: "테스트 메일 · Zenna Nail",
+        html: "<p>이 메일이 보이면 예약 알림도 정상으로 옵니다.</p>",
+      }),
+    });
+    if (res.ok) return { ok: true, to };
+    const body = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      name?: string;
+    };
+    return {
+      ok: false,
+      error: `${res.status} ${body.name ?? ""} ${body.message ?? ""}`.trim(),
+    };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}

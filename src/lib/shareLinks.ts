@@ -7,9 +7,12 @@ function base(baseUrl: string): string {
   return (baseUrl ?? "").replace(/\/+$/, "");
 }
 
-/** 예약하기 페이지 */
-export function bookLink(baseUrl: string): string {
-  return `${base(baseUrl)}/book`;
+/**
+ * 가게 홈. 손님에게 보내는 링크는 예약 위저드 한가운데가 아니라
+ * 안내·가격이 있는 첫 화면에서 시작해야 한다.
+ */
+export function homeLink(baseUrl: string): string {
+  return `${base(baseUrl)}/`;
 }
 
 /** 갤러리 페이지 */
