@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots } from "@/lib/types";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { fitFrom, sortSlots } from "@/lib/scheduling";
 import { bookingLink } from "@/lib/shareLinks";
 import { ShareButtons } from "./ShareLinks";
 import {
@@ -96,17 +97,37 @@ export function AdminBookingCard({
     !!booking.confirmed_slot &&
     booking.confirmed_slot.starts_at > new Date().toISOString();
 
-  // 확정시간 변경 후보: 손님이 고른 시간(1지망+대체) 중, 현재 확정 시간이 아니고
-  // 아직 열려 있는 것만. (손님이 선택하지 않은 시간으로는 옮길 수 없음)
-  const changeCandidates = [
-    ...(booking.preferred_slot ? [booking.preferred_slot] : []),
-    ...booking.alternative_slots,
-  ].filter(
-    (s, i, arr) =>
-      s.id !== booking.confirmed_slot?.id &&
-      s.status === "open" &&
-      arr.findIndex((x) => x.id === s.id) === i,
-  );
+  // 확정시간 변경 후보: 열려 있는 모든 미래 시간 중, 시술 소요시간이 들어가는 곳.
+  // 서버(confirmBooking)는 원래 아무 시간이나 받고 자리가 되는지만 보므로,
+  // 손님이 고른 시간으로 좁힐 이유가 없다. 이 예약이 지금 점유한 슬롯도
+  // 서버가 먼저 반납하므로 후보 계산에서 열린 것으로 친다.
+  const changeCandidates = useMemo(() => {
+    const nowIso = new Date().toISOString();
+    const mine = new Set(booking.occupied_slot_ids ?? []);
+    const pool = sortSlots(
+      openSlots
+        .filter((s) => s.starts_at >= nowIso)
+        .concat(
+          (booking.confirmed_slot ? [booking.confirmed_slot] : []).filter(
+            (s) => s.starts_at >= nowIso,
+          ),
+        )
+        .filter(
+          (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i,
+        )
+        .map((s) => (mine.has(s.id) ? { ...s, status: "open" } : s)),
+    );
+    const duration = booking.services.reduce(
+      (sum, l) => sum + (l.duration_min || 0),
+      0,
+    );
+    return pool.filter(
+      (s) =>
+        s.id !== booking.confirmed_slot?.id &&
+        s.status === "open" &&
+        fitFrom(pool, s.id, duration || 30),
+    );
+  }, [openSlots, booking]);
 
   return (
     <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
@@ -387,13 +408,10 @@ export function AdminBookingCard({
           <div className="flex gap-2">
             <button
               disabled={pending}
-              title={notStarted ? a.completeTooEarly : undefined}
-              onClick={() =>
-                notStarted ? setErr(a.completeTooEarly) : setShowComplete(true)
-              }
+              onClick={() => setShowComplete(true)}
               className="flex-1 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              {notStarted ? a.completeAfterStart : a.markCompleted}
+              {a.markCompleted}
             </button>
             <button
               disabled={pending}
@@ -404,7 +422,7 @@ export function AdminBookingCard({
             </button>
           </div>
           {notStarted && (
-            <p className="text-[11px] text-muted">{a.completeTooEarly}</p>
+            <p className="text-[11px] text-muted">{a.completeEarlyNote}</p>
           )}
           {/* 확정 후에도 시간 변경 가능 */}
           <button
