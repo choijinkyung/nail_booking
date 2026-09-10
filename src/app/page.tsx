@@ -68,12 +68,12 @@ export default async function LandingPage() {
         <section className="mt-8">
           <div className="space-y-2">
             <NoticeBanner
-              title={isEn ? "About timing" : "예약 시간이 조정될 수 있어요"}
+              title={`${isEn ? "About timing" : "예약 시간이 조정될 수 있어요"} 💛`}
             >
               {scheduleNote}
             </NoticeBanner>
             {/* 알레르기 안내는 접지 않는다 — 모르고 오시면 곤란해지는 내용이다 */}
-            <NoticeBanner title={dict.landing.noticeTitle} defaultOpen>
+            <NoticeBanner title={`${dict.landing.noticeTitle} 💛`} defaultOpen>
               {notice}
             </NoticeBanner>
           </div>
@@ -81,7 +81,7 @@ export default async function LandingPage() {
 
         {/* How it works */}
         <section className="mt-12">
-          <SectionTitle>{dict.landing.howTitle}</SectionTitle>
+          <SectionTitle>📍 {dict.landing.howTitle}</SectionTitle>
           <ol className="flex items-center gap-2 text-sm text-muted">
             {steps.map((s, i) => (
               <li key={i} className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export default async function LandingPage() {
 
         {/* Pricing */}
         <section className="mt-12">
-          <SectionTitle>{dict.landing.pricingTitle}</SectionTitle>
+          <SectionTitle>📍 {dict.landing.pricingTitle}</SectionTitle>
           <div>
             {services.length === 0 ? (
               <p className="rounded-lg bg-surface px-4 py-8 text-center text-sm text-muted">
@@ -141,7 +141,7 @@ export default async function LandingPage() {
 
         {/* Location */}
         <section className="mt-12">
-          <SectionTitle>{dict.landing.locationTitle}</SectionTitle>
+          <SectionTitle>📍 {dict.landing.locationTitle}</SectionTitle>
           <p className="text-[15px] leading-relaxed text-brand-900">{location}</p>
         </section>
 
