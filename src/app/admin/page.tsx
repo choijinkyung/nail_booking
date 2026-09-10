@@ -38,6 +38,7 @@ export default async function AdminDashboardPage() {
         baseUrl={baseUrl}
         shopName={locale === "en" ? settings.shop_name_en : settings.shop_name_ko}
         location={locale === "en" ? settings.location_en : settings.location_ko}
+        confirmedAddress={settings.confirmed_address}
       />
     </AdminShell>
   );

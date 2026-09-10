@@ -34,7 +34,7 @@ export default async function LandingPage() {
 
       <main className="mx-auto max-w-md px-5 pb-28">
         {/* Hero — 이름과 한 줄, 그리고 바로 예약. 장식은 로고 하나로 충분하다. */}
-        <section className="pt-10">
+        <section className="pt-7">
           {settings.logo_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img

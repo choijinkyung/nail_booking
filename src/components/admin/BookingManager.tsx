@@ -47,6 +47,7 @@ export function BookingManager({
   baseUrl,
   shopName,
   location,
+  confirmedAddress,
 }: {
   bookings: BookingWithSlots[];
   openSlots: AvailabilitySlot[];
@@ -57,6 +58,7 @@ export function BookingManager({
   baseUrl: string;
   shopName: string;
   location: string;
+  confirmedAddress: string;
 }) {
   const a = dict.admin;
   const nowIso = new Date().toISOString();
@@ -129,6 +131,7 @@ export function BookingManager({
       baseUrl={baseUrl}
       shopName={shopName}
       location={location}
+      confirmedAddress={confirmedAddress}
     />
   );
 

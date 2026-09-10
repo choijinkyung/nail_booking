@@ -151,5 +151,6 @@ export interface Settings {
   etransfer_note_en: string;
   currency: string;
   booking_window_days: number;
+  confirmed_address: string;
   updated_at: string;
 }

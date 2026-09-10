@@ -1231,6 +1231,7 @@ export async function saveSettings(
       notice_en: get("notice_en"),
       payment_ko: get("payment_ko"),
       payment_en: get("payment_en"),
+      confirmed_address: get("confirmed_address"),
       etransfer_email: get("etransfer_email"),
       etransfer_note_ko: get("etransfer_note_ko"),
       etransfer_note_en: get("etransfer_note_en"),

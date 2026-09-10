@@ -58,7 +58,17 @@ export function SettingsForm({
         <Area name="location_en" label={a.en} def={settings.location_en} cls={input} />
       </Group>
 
-      <Group title={`⚠️ ${a.notice}`}>
+      <Group title={a.confirmedAddress}>
+        <p className="mb-2 text-xs text-muted">{a.confirmedAddressHint}</p>
+        <Area
+          name="confirmed_address"
+          label={a.confirmedAddress}
+          def={settings.confirmed_address}
+          cls={input}
+        />
+      </Group>
+
+      <Group title={a.notice}>
         <Area name="notice_ko" label={a.ko} def={settings.notice_ko} cls={input} />
         <Area name="notice_en" label={a.en} def={settings.notice_en} cls={input} />
       </Group>

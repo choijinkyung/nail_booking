@@ -241,6 +241,10 @@ create index if not exists bookings_customer_contact_norm_idx
 create index if not exists bookings_customer_name_lower_idx
   on public.bookings (lower(customer_name));
 
+-- 확정된 손님에게만 보낼 실제 주소 (마이그레이션 20260910000000 미러)
+alter table public.settings
+  add column if not exists confirmed_address text not null default '';
+
 -- ── RLS: 브라우저에서 직접 접근 차단(앱은 service_role로만 접근) ──
 alter table public.services           enable row level security;
 alter table public.availability_slots enable row level security;

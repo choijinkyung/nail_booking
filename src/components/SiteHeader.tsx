@@ -2,6 +2,11 @@ import Link from "next/link";
 import { LanguageToggle } from "./LanguageToggle";
 import type { Locale } from "@/lib/i18n";
 
+/**
+ * 페이지 첫 줄 — 상호(왼쪽)와 언어 전환(오른쪽).
+ * 회색 띠를 두른 고정 헤더 대신 본문의 첫 행으로 두어,
+ * 화면 맨 위가 곧 가게 이름이 되게 한다.
+ */
 export function SiteHeader({
   locale,
   shopName,
@@ -10,13 +15,11 @@ export function SiteHeader({
   shopName: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-brand-100 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-        <Link href="/" className="font-semibold text-brand-900">
-          <span className="block max-w-[11rem] truncate">{shopName}</span>
-        </Link>
-        <LanguageToggle locale={locale} />
-      </div>
-    </header>
+    <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-5 pt-5">
+      <Link href="/" className="min-w-0 text-[17px] font-bold text-brand-900">
+        <span className="block truncate">{shopName}</span>
+      </Link>
+      <LanguageToggle locale={locale} />
+    </div>
   );
 }

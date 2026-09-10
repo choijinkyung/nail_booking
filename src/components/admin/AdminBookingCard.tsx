@@ -28,6 +28,7 @@ interface Props {
   baseUrl: string;
   shopName: string;
   location: string;
+  confirmedAddress: string;
 }
 
 // 임시: 확인 대기의 '다른 시간 제안 / 가능시간 안내' UI를 화면에서 숨김 (코드는 유지)
@@ -50,6 +51,7 @@ export function AdminBookingCard({
   baseUrl,
   shopName,
   location,
+  confirmedAddress,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -170,6 +172,7 @@ export function AdminBookingCard({
                 locale,
                 currency,
                 location,
+                confirmedAddress,
                 confirmedIso: booking.confirmed_slot?.starts_at ?? null,
                 preferredIso: booking.preferred_slot?.starts_at ?? null,
                 services: booking.services,

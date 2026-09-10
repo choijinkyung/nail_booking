@@ -22,6 +22,8 @@ export function buildBookingShareText(input: {
   locale: Locale;
   currency: string;
   location: string;
+  /** 확정된 손님에게만 보낼 실제 주소. 비어 있으면 location 을 쓴다. */
+  confirmedAddress?: string;
   confirmedIso: string | null;
   preferredIso: string | null;
   services: ShareServiceLine[];
@@ -59,8 +61,12 @@ export function buildBookingShareText(input: {
     );
   }
 
-  if (input.location.trim()) {
-    lines.push(`📍 ${input.location.trim()}`);
+  // 확정된 예약에만 실제 주소를 보낸다 — 확정 전 손님에게 집 주소가 새지 않도록.
+  const place = input.confirmedIso
+    ? (input.confirmedAddress ?? "").trim() || input.location.trim()
+    : input.location.trim();
+  if (place) {
+    lines.push(`📍 ${place}`);
   }
 
   lines.push("");

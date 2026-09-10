@@ -6,6 +6,7 @@ const base = {
   locale: "ko" as const,
   currency: "CAD",
   location: "Surrey Central 인근",
+  confirmedAddress: "",
   services: [
     {
       name_ko: "원컬러 (젤네일)",
@@ -104,5 +105,43 @@ describe("buildBookingShareText", () => {
     });
     expect(t).toContain("One Color");
     expect(t).not.toContain("원컬러");
+  });
+});
+
+describe("확정 손님에게 보낼 주소", () => {
+  const withAddr = {
+    ...base,
+    confirmedAddress: "1234 Example St, Surrey BC",
+    services: base.services,
+  };
+
+  it("확정된 예약에는 실제 주소를 쓴다", () => {
+    const t = buildBookingShareText({
+      ...withAddr,
+      confirmedIso: "2026-09-11T03:00:00.000Z",
+      preferredIso: null,
+    });
+    expect(t).toContain("1234 Example St, Surrey BC");
+    expect(t).not.toContain("Surrey Central 인근");
+  });
+
+  it("아직 확정 전이면 실제 주소를 흘리지 않는다", () => {
+    const t = buildBookingShareText({
+      ...withAddr,
+      confirmedIso: null,
+      preferredIso: "2026-09-11T03:00:00.000Z",
+    });
+    expect(t).not.toContain("1234 Example St");
+    expect(t).toContain("Surrey Central 인근");
+  });
+
+  it("확정됐지만 실제 주소를 안 적어뒀으면 대략 위치를 쓴다", () => {
+    const t = buildBookingShareText({
+      ...base,
+      confirmedAddress: "",
+      confirmedIso: "2026-09-11T03:00:00.000Z",
+      preferredIso: null,
+    });
+    expect(t).toContain("Surrey Central 인근");
   });
 });

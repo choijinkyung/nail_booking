@@ -12,7 +12,7 @@ export function LanguageToggle({ locale }: { locale: Locale }) {
     <form action={setLocale.bind(null, other)}>
       <button
         type="submit"
-        className="rounded-full border border-brand-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-brand-900 backdrop-blur transition hover:bg-brand-50 active:scale-95"
+        className="shrink-0 rounded-md border border-brand-200 px-2.5 py-1 text-[13px] font-medium text-muted transition hover:bg-brand-50"
         aria-label={`Switch language to ${other}`}
       >
         {label}
