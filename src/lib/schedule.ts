@@ -1,4 +1,5 @@
 import { SLOT_MIN } from "./scheduling";
+import { wallClockToIso } from "./shopTime";
 
 /** 가게 기준 시간대. 표시와 영업시간 계산은 모두 이 시간대의 '벽시계' 기준이다. */
 export const SHOP_TZ = "America/Vancouver";
@@ -21,50 +22,13 @@ export function clampWindowDays(n: number): number {
 }
 
 /**
- * 주어진 순간에 해당 시간대가 UTC보다 얼마나 앞서는지(ms).
- * Intl 로 그 시간대의 벽시계를 읽어 UTC 로 해석한 뒤 차이를 낸다.
- */
-function zoneOffsetMs(at: Date, tz: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(at);
-  const g = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
-  const asUtc = Date.UTC(
-    g("year"),
-    g("month") - 1,
-    g("day"),
-    g("hour"),
-    g("minute"),
-    g("second"),
-  );
-  return asUtc - at.getTime();
-}
-
-/**
  * 가게 시간대의 '벽시계' 시각(dayKey + 자정부터의 분) → UTC ISO.
- * 오프셋이 그 순간에 따라 달라지므로(서머타임) 두 번 수렴시킨다.
+ * 실행 환경의 시간대 데이터가 아니라 shopTime 의 규칙을 쓴다 —
+ * 배포 환경의 데이터가 11월 서머타임 종료를 반영하지 못해 슬롯이
+ * 한 시간씩 밀리는 일이 있었다.
  */
-export function zonedIso(
-  dayKey: string,
-  minutes: number,
-  tz: string = SHOP_TZ,
-): string {
-  const [y, m, d] = dayKey.split("-").map(Number);
-  const hh = Math.floor(minutes / 60);
-  const mm = minutes % 60;
-  const naive = Date.UTC(y, m - 1, d, hh, mm, 0, 0);
-  let ts = naive;
-  for (let i = 0; i < 2; i++) {
-    ts = naive - zoneOffsetMs(new Date(ts), tz);
-  }
-  return new Date(ts).toISOString();
+export function zonedIso(dayKey: string, minutes: number): string {
+  return wallClockToIso(dayKey, minutes);
 }
 
 /** dayKey("YYYY-MM-DD") 의 요일. 0=일 … 6=토 */
