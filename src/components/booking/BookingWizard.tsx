@@ -12,6 +12,7 @@ import {
   formatTimeOnly,
   unitLabel,
 } from "@/lib/format";
+import { lineDuration } from "@/lib/bookingLines";
 import { REFERRAL_KEYS } from "@/lib/i18n";
 import { createBooking, uploadReferenceImage } from "@/app/actions";
 import { TimePicker } from "./TimePicker";
@@ -68,8 +69,9 @@ export function BookingWizard(props: Props) {
     [selectedServices, qty],
   );
   const totalDuration = useMemo(
-    () => selectedServices.reduce((sum, s) => sum + (s.duration_min || 0), 0),
-    [selectedServices],
+    () =>
+      selectedServices.reduce((sum, s) => sum + lineDuration(s, qty[s.id]), 0),
+    [selectedServices, qty],
   );
 
   function toggleService(s: Service) {

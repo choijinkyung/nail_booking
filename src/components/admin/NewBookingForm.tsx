@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { Service } from "@/lib/types";
 import { formatDuration, formatServicePrice } from "@/lib/format";
+import { lineDuration } from "@/lib/bookingLines";
 import { createAdminBooking } from "@/app/admin/actions";
 import { CustomerPicker, type PickedCustomer } from "./CustomerPicker";
 import type { PickerCustomer } from "./BookingCalendar";
@@ -49,9 +50,11 @@ export function NewBookingForm({
         .map((s) => ({ service: s, quantity: qty[s.id] })),
     [services, qty],
   );
-  // buildServiceLines 는 수량과 무관하게 시술당 duration_min 을 한 번만 싣는다
-  // (bookingDurationMin 이 그 합). 표시도 같은 규칙을 따라야 어긋나지 않는다.
-  const totalMin = picked.reduce((sum, p) => sum + p.service.duration_min, 0);
+  // 손가락당 시술은 개수만큼 시간이 늘어난다(buildServiceLines 와 같은 규칙).
+  const totalMin = picked.reduce(
+    (sum, p) => sum + lineDuration(p.service, p.quantity),
+    0,
+  );
   const totalPrice = picked.reduce(
     (sum, p) =>
       sum +
