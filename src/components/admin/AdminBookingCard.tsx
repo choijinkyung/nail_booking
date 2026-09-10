@@ -237,6 +237,7 @@ export function AdminBookingCard({
                         slotId: booking.requested_slot!.id,
                         message,
                       }),
+                      "changed",
                     )
                   }
                   className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
