@@ -36,13 +36,13 @@ export function BookingActions({
   const duration = bookingDurationMin(booking.services);
 
   const inputClass =
-    "w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
+    "w-full rounded-md border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
   // ── 관리자가 가능시간을 안내한 경우: 손님이 선택 → 확정 ──
   if (booking.status === "pending" && booking.proposed_slots.length > 0) {
     return (
       <Card className="border-brand-300">
-        <p className="text-sm font-semibold text-brand-800">
+        <p className="text-sm font-semibold text-brand-900">
           {st.proposedTitle}
         </p>
         <p className="mt-1 mb-3 text-xs text-muted">{st.proposedDesc}</p>
@@ -51,10 +51,10 @@ export function BookingActions({
             <button
               key={s.id}
               onClick={() => setProposedPick(s.id)}
-              className={`rounded-xl border px-3.5 py-2.5 text-sm font-medium transition ${
+              className={`rounded-md border px-3.5 py-2.5 text-sm font-medium transition ${
                 proposedPick === s.id
                   ? "border-brand-500 bg-brand-500 text-white"
-                  : "border-brand-200 bg-white text-brand-800 hover:bg-brand-50"
+                  : "border-brand-200 bg-white text-brand-900 hover:bg-brand-50"
               }`}
             >
               {formatDateTime(s.starts_at, locale)}
@@ -74,7 +74,7 @@ export function BookingActions({
               else setErr(st.requestErr);
             });
           }}
-          className="mt-4 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-4 w-full rounded-md bg-brand-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           {st.confirmThisTime}
         </button>
@@ -87,7 +87,7 @@ export function BookingActions({
   if (booking.status === "declined") {
     return (
       <Card>
-        <p className="text-sm font-semibold text-brand-800">
+        <p className="text-sm font-semibold text-brand-900">
           {st.reRequestOpen}
         </p>
         <p className="mt-1 mb-3 text-xs text-muted">{st.reRequestDesc}</p>
@@ -113,7 +113,7 @@ export function BookingActions({
               else setErr(st.requestErr);
             });
           }}
-          className="mt-4 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-4 w-full rounded-md bg-brand-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           {pending ? dict.booking.submitting : st.reRequestSubmit}
         </button>
@@ -164,13 +164,13 @@ export function BookingActions({
         <div className="flex gap-2">
           <button
             onClick={() => setMode("change")}
-            className="flex-1 rounded-xl border border-brand-300 px-3 py-2.5 text-sm font-medium text-brand-700"
+            className="flex-1 rounded-md border border-brand-300 px-3 py-2.5 text-sm font-medium text-brand-900"
           >
             🔄 {st.requestChange}
           </button>
           <button
             onClick={() => setMode("cancel")}
-            className="flex-1 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600"
+            className="flex-1 rounded-md border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600"
           >
             ❌ {st.requestCancel}
           </button>
@@ -192,14 +192,14 @@ export function BookingActions({
           <div className="flex gap-2">
             <button
               onClick={() => setMode(null)}
-              className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm font-medium text-brand-700"
+              className="rounded-md border border-brand-200 px-4 py-2.5 text-sm font-medium text-brand-900"
             >
               {dict.common.back}
             </button>
             <button
               onClick={() => send(mode)}
               disabled={pending}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 ${
+              className={`flex-1 rounded-md px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 ${
                 mode === "cancel" ? "bg-red-500" : "bg-brand-600"
               }`}
             >

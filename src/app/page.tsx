@@ -40,7 +40,7 @@ export default async function LandingPage() {
             <img
               src={settings.logo_url}
               alt=""
-              className="mb-5 h-14 w-14 rounded-xl object-cover"
+              className="mb-5 h-14 w-14 rounded-md object-cover"
             />
           )}
           <h1 className="text-[32px] font-bold leading-tight text-brand-900">
@@ -53,7 +53,7 @@ export default async function LandingPage() {
 
         {/* ⏰ 예약시간 유동 안내 — 가장 강조 (제일 중요) */}
         <section className="mt-6">
-          <div className="rounded-2xl bg-surface p-4">
+          <div className="rounded-lg bg-surface p-4">
             <p className="text-sm font-bold text-brand-900">
               {isEn ? "Please note about timing" : "예약 시간 안내 (꼭 읽어주세요)"}
             </p>
@@ -95,7 +95,7 @@ export default async function LandingPage() {
           <SectionTitle>{dict.landing.pricingTitle}</SectionTitle>
           <div>
             {services.length === 0 ? (
-              <p className="rounded-2xl bg-surface px-4 py-8 text-center text-sm text-muted">
+              <p className="rounded-lg bg-surface px-4 py-8 text-center text-sm text-muted">
                 {dict.booking.noServices}
               </p>
             ) : (
@@ -111,7 +111,7 @@ export default async function LandingPage() {
                         <p className="font-medium text-brand-900">
                           {isEn ? s.name_en : s.name_ko}
                           <span className="ml-2 text-xs font-normal text-muted">
-                            ⏱ {formatDuration(s.duration_min, locale)}
+                            {formatDuration(s.duration_min, locale)}
                           </span>
                         </p>
                         {(isEn ? s.description_en : s.description_ko) && (
@@ -120,7 +120,7 @@ export default async function LandingPage() {
                           </p>
                         )}
                       </div>
-                      <p className="whitespace-nowrap font-semibold text-brand-700">
+                      <p className="whitespace-nowrap font-semibold text-brand-900">
                         {formatServicePrice(s.price, settings.currency, s.price_from)}
                         {u && (
                           <span className="ml-1 text-xs font-normal text-muted">

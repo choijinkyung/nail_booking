@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
   return (
     <AdminShell active="settings" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
+      <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.settingsTitle}
       </h1>
       <SettingsForm settings={settings} dict={dict} />

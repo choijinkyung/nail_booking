@@ -42,7 +42,7 @@ export function CustomerPicker({
     : [];
 
   const field =
-    "w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400";
+    "w-full rounded-md border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400";
 
   function switchMode(next: "existing" | "new") {
     setMode(next);
@@ -68,7 +68,7 @@ export function CustomerPicker({
 
   const tab = (on: boolean) =>
     `rounded-lg px-3 py-1 text-xs font-semibold ${
-      on ? "bg-brand-600 text-white" : "border border-brand-200 text-brand-700"
+      on ? "bg-brand-600 text-white" : "border border-brand-200 text-brand-900"
     }`;
 
   return (
@@ -99,7 +99,7 @@ export function CustomerPicker({
             className={field}
           />
           {pickedId ? (
-            <p className="text-sm font-medium text-brand-700">
+            <p className="text-sm font-medium text-brand-900">
               ✓ {customers.find((c) => c.id === pickedId)?.name}{" "}
               <span className="text-xs font-normal text-muted">
                 {customers.find((c) => c.id === pickedId)?.contact}

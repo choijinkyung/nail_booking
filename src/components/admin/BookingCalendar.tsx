@@ -195,13 +195,13 @@ export function BookingCalendar({
     <div>
       {/* 매출 요약 */}
       <div className="mb-4 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-brand-100 bg-white p-3 text-center">
+        <div className="rounded-lg border border-brand-100 bg-white p-3 text-center">
           <p className="text-xs text-muted">{dict.admin.revenueMonth}</p>
-          <p className="mt-0.5 text-lg font-bold text-brand-700">
+          <p className="mt-0.5 text-lg font-bold text-brand-900">
             {formatMoney(revenueMonth, currency)}
           </p>
         </div>
-        <div className="rounded-2xl border border-brand-100 bg-brand-600 p-3 text-center text-white">
+        <div className="rounded-lg border border-brand-100 bg-brand-600 p-3 text-center text-white">
           <p className="text-xs opacity-90">{dict.admin.revenueTotal}</p>
           <p className="mt-0.5 text-lg font-bold">
             {formatMoney(revenueTotal, currency)}
@@ -218,7 +218,7 @@ export function BookingCalendar({
           ‹
         </button>
         <div className="flex items-center gap-2">
-          <span className="font-bold text-brand-800">{monthLabel}</span>
+          <span className="font-bold text-brand-900">{monthLabel}</span>
           <button
             onClick={goToday}
             className="rounded-full border border-brand-200 px-2.5 py-0.5 text-xs text-brand-600"
@@ -298,7 +298,7 @@ export function BookingCalendar({
           </button>
           <button
             onClick={() => setPane((p) => (p === "block" ? "none" : "block"))}
-            className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-700"
+            className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-900"
           >
             ⛔ {dict.admin.addBlock}
           </button>
@@ -343,7 +343,7 @@ export function BookingCalendar({
         )}
 
         {selectedEvents.length === 0 ? (
-          <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+          <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
             {dict.admin.noBookingsOnDay}
           </p>
         ) : (
@@ -351,16 +351,16 @@ export function BookingCalendar({
             {selectedEvents.map((e, i) => (
               <li
                 key={i}
-                className="flex items-center gap-3 rounded-xl border border-brand-100 bg-white p-3"
+                className="flex items-center gap-3 rounded-md border border-brand-100 bg-white p-3"
               >
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[e.status] ?? "bg-brand-300"}`}
                 />
-                <span className="w-24 shrink-0 text-sm font-semibold text-brand-700">
+                <span className="w-24 shrink-0 text-sm font-semibold text-brand-900">
                   {formatTimeOnly(e.iso, locale)}
                   {e.durationMin > 0 && (
                     <span className="block text-[11px] font-normal text-muted">
-                      ⏱ {formatDuration(e.durationMin, locale)}
+                      {formatDuration(e.durationMin, locale)}
                     </span>
                   )}
                 </span>
@@ -377,7 +377,7 @@ export function BookingCalendar({
                     {statusText(e.status, dict)}
                   </span>
                   {e.status === "completed" && e.amount > 0 && (
-                    <span className="block font-semibold text-brand-700">
+                    <span className="block font-semibold text-brand-900">
                       {formatMoney(e.amount, currency)}
                     </span>
                   )}
@@ -419,7 +419,7 @@ function BlockRow({
 }) {
   const [pending, startTransition] = useTransition();
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+    <li className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
       <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-gray-400" />
       <span className="w-24 shrink-0 text-sm font-semibold text-gray-700">
         {formatTimeOnly(run.startIso, locale)}

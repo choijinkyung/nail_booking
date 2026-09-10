@@ -18,7 +18,7 @@ export default async function ServicesPage() {
 
   return (
     <AdminShell active="services" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
+      <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.servicesTitle}
       </h1>
       <ServicesManager

@@ -98,7 +98,7 @@ export function MiniCalendar({
           ‹
         </button>
         <div className="flex items-center gap-2">
-          <span className="font-bold text-brand-800">{monthLabel}</span>
+          <span className="font-bold text-brand-900">{monthLabel}</span>
           <button
             type="button"
             onClick={goToday}

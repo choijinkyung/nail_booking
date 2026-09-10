@@ -172,15 +172,15 @@ export function BookingWizard(props: Props) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">
           🎉
         </div>
-        <h1 className="text-xl font-bold text-brand-800">
+        <h1 className="text-xl font-bold text-brand-900">
           {dict.booking.successTitle}
         </h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted">
           {dict.booking.successDesc}
         </p>
-        <div className="mt-5 rounded-2xl border border-brand-200 bg-white p-5">
+        <div className="mt-5 rounded-lg border border-brand-200 bg-white p-5">
           <p className="text-xs text-muted">{dict.booking.yourCode}</p>
-          <p className="mt-1 select-all text-3xl font-extrabold tracking-widest text-brand-700">
+          <p className="mt-1 select-all text-3xl font-extrabold tracking-widest text-brand-900">
             {resultCode}
           </p>
           <button
@@ -196,7 +196,7 @@ export function BookingWizard(props: Props) {
         </div>
         <button
           onClick={() => router.push(`/status?code=${resultCode}`)}
-          className="mt-6 w-full rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white"
+          className="mt-6 w-full rounded-md bg-brand-600 px-5 py-3 font-semibold text-white"
         >
           {dict.booking.goLookup}
         </button>
@@ -239,56 +239,43 @@ export function BookingWizard(props: Props) {
             {services.length === 0 ? (
               <p className="text-sm text-muted">{dict.booking.noServices}</p>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-brand-100 border-y border-brand-100">
                 {services.map((s) => {
                   const on = qty[s.id] > 0;
                   const u = unitLabel(s.unit, locale);
                   return (
-                    <div
-                      key={s.id}
-                      className={`rounded-2xl border p-4 transition ${
-                        on
-                          ? "border-brand-400 bg-brand-50"
-                          : "border-brand-100 bg-white"
-                      }`}
-                    >
+                    <div key={s.id} className="py-3">
                       <button
                         type="button"
                         onClick={() => toggleService(s)}
-                        className="flex w-full items-center justify-between text-left"
+                        className="flex w-full items-center gap-3 text-left"
                       >
-                        <span>
-                          <span className="font-semibold text-brand-900">
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-semibold text-brand-900">
                             {isEn ? s.name_en : s.name_ko}
                           </span>
-                          {u && (
-                            <span className="ml-1 text-xs text-muted">
-                              ({formatMoney(s.price, currency)}/{u})
-                            </span>
-                          )}
-                          <span className="ml-1 text-xs text-muted">
-                            · ⏱ {formatDuration(s.duration_min, locale)}
+                          <span className="mt-0.5 block text-[13px] text-muted">
+                            {formatDuration(s.duration_min, locale)}
+                            {u && ` · ${formatMoney(s.price, currency)}/${u}`}
                           </span>
                         </span>
-                        <span className="flex items-center gap-2">
-                          {s.unit === "flat" && (
-                            <span className="font-semibold text-brand-700">
-                              {formatServicePrice(s.price, currency, s.price_from)}
-                            </span>
-                          )}
-                          <span
-                            className={`flex h-6 w-6 items-center justify-center rounded-full border text-sm ${
-                              on
-                                ? "border-brand-500 bg-brand-500 text-white"
-                                : "border-brand-200 text-transparent"
-                            }`}
-                          >
-                            ✓
+                        {s.unit === "flat" && (
+                          <span className="shrink-0 font-semibold text-brand-900">
+                            {formatServicePrice(s.price, currency, s.price_from)}
                           </span>
+                        )}
+                        <span
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] ${
+                            on
+                              ? "border-brand-600 bg-brand-600 text-white"
+                              : "border-brand-200 text-transparent"
+                          }`}
+                        >
+                          ✓
                         </span>
                       </button>
                       {on && s.unit === "per_finger" && (
-                        <div className="mt-3 flex items-center justify-between border-t border-brand-100 pt-3">
+                        <div className="mt-3 flex items-center justify-between">
                           <span className="text-sm text-muted">
                             {dict.booking.fingers}
                           </span>
@@ -298,7 +285,7 @@ export function BookingWizard(props: Props) {
                               onInc={() => changeQty(s.id, 1)}
                               value={qty[s.id]}
                             />
-                            <span className="w-16 text-right font-semibold text-brand-700">
+                            <span className="w-16 text-right font-semibold text-brand-900">
                               {formatMoney(Number(s.price) * qty[s.id], currency)}
                             </span>
                           </div>
@@ -325,7 +312,7 @@ export function BookingWizard(props: Props) {
         {/* Step 1: 1지망 시간 (하나만) */}
         {step === 1 && (
           <div>
-            <p className="mb-1 text-sm font-semibold text-brand-800">
+            <p className="mb-1 text-sm font-semibold text-brand-900">
               {dict.booking.pickPreferred}
             </p>
             <p className="mb-3 text-xs text-muted">
@@ -347,7 +334,7 @@ export function BookingWizard(props: Props) {
         {step === 2 && (
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <p className="text-sm font-semibold text-brand-800">
+              <p className="text-sm font-semibold text-brand-900">
                 {dict.booking.pickAlts}
               </p>
               <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
@@ -368,7 +355,7 @@ export function BookingWizard(props: Props) {
                 setAltPicks([]);
                 setStep(3);
               }}
-              className="mt-4 w-full rounded-xl border border-brand-200 px-4 py-2.5 text-sm font-medium text-muted"
+              className="mt-4 w-full rounded-md border border-brand-200 px-4 py-2.5 text-sm font-medium text-muted"
             >
               {dict.booking.skipAlts}
             </button>
@@ -428,7 +415,7 @@ export function BookingWizard(props: Props) {
                 type="file"
                 accept="image/*"
                 onChange={(e) => setRefFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-brand-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-700"
+                className="block w-full text-sm text-brand-900 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-900"
               />
               {refFile && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -441,7 +428,7 @@ export function BookingWizard(props: Props) {
             </Field>
 
             {/* 디자인/재료 안내 — 원하는 디자인 첨부 유도 + 사전 컨펌 책임 */}
-            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
               <p className="font-bold">🎨 {dict.booking.designNoticeTitle}</p>
               <p className="mt-1 whitespace-pre-line">
                 {dict.booking.designNotice}
@@ -458,7 +445,7 @@ export function BookingWizard(props: Props) {
             </Field>
 
             {/* 일찍 시술 가능 시 연락받기 — 눈에 띄게 강조 */}
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-brand-400 bg-brand-50 p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border-2 border-brand-400 bg-brand-50 p-4">
               <input
                 type="checkbox"
                 checked={earlyContact}
@@ -466,10 +453,10 @@ export function BookingWizard(props: Props) {
                 className="mt-0.5 h-5 w-5 accent-brand-600"
               />
               <span>
-                <span className="block text-sm font-bold text-brand-800">
+                <span className="block text-sm font-bold text-brand-900">
                   ⏰ {dict.booking.earlyContactTitle}
                 </span>
-                <span className="mt-0.5 block text-xs text-brand-700">
+                <span className="mt-0.5 block text-xs text-brand-900">
                   {dict.booking.earlyContactDesc}
                 </span>
               </span>
@@ -494,13 +481,13 @@ export function BookingWizard(props: Props) {
                   </li>
                 ))}
               </ul>
-              <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
+              <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-900">
                 <span>{dict.booking.estimated}</span>
                 <span>{formatMoney(estimated, currency)}</span>
               </div>
               {totalDuration > 0 && (
                 <div className="mt-1 flex justify-between text-sm text-muted">
-                  <span>⏱ {dict.booking.estimatedDuration}</span>
+                  <span>{dict.booking.estimatedDuration}</span>
                   <span>{formatDuration(totalDuration, locale)}</span>
                 </div>
               )}
@@ -528,13 +515,13 @@ export function BookingWizard(props: Props) {
             </p>
 
             {/* 마지막 확인: 반려동물 안내 + 예약시간 변경 가능 안내 */}
-            <div className="space-y-2 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="space-y-2 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
               <p className="whitespace-pre-line">⚠️ {notice}</p>
               <p className="whitespace-pre-line border-t border-amber-200 pt-2">
                 ⏰ {scheduleNote}
               </p>
             </div>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-200 bg-white p-3">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-brand-200 bg-white p-3">
               <input
                 type="checkbox"
                 checked={agree}
@@ -558,7 +545,7 @@ export function BookingWizard(props: Props) {
         {step > 0 && (
           <button
             onClick={back}
-            className="min-h-12 rounded-xl border border-brand-200 px-5 text-[15px] font-semibold text-brand-800"
+            className="min-h-12 rounded-md border border-brand-200 px-5 text-[15px] font-semibold text-brand-900"
           >
             {dict.common.back}
           </button>
@@ -567,7 +554,7 @@ export function BookingWizard(props: Props) {
           <button
             onClick={next}
             disabled={validateStep(step) !== ""}
-            className="min-h-12 flex-1 rounded-xl bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
+            className="min-h-12 flex-1 rounded-md bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
           >
             {dict.common.next}
           </button>
@@ -575,7 +562,7 @@ export function BookingWizard(props: Props) {
           <button
             onClick={submit}
             disabled={pending || !agree || !preferred}
-            className="min-h-12 flex-1 rounded-xl bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
+            className="min-h-12 flex-1 rounded-md bg-brand-600 px-5 text-[15px] font-semibold text-white disabled:opacity-40"
           >
             {pending ? dict.booking.submitting : dict.booking.submitRequest}
           </button>
@@ -588,7 +575,7 @@ export function BookingWizard(props: Props) {
 // ── 하위 컴포넌트/헬퍼 ───────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
+  "w-full rounded-md border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 function Field({
   label,
@@ -599,7 +586,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-brand-800">
+      <span className="mb-1 block text-sm font-medium text-brand-900">
         {label}
       </span>
       {children}
@@ -649,19 +636,19 @@ function TotalBar({
   durationText?: string;
 }) {
   return (
-    <div className="mt-4 rounded-xl bg-brand-100/60 px-4 py-3">
+    <div className="mt-4 rounded-md bg-brand-100/60 px-4 py-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-brand-800">
+        <span className="text-sm font-medium text-brand-900">
           {dict.booking.estimated}
         </span>
-        <span className="text-lg font-bold text-brand-700">
+        <span className="text-lg font-bold text-brand-900">
           {formatMoney(total, currency)}
         </span>
       </div>
       {durationText && (
         <div className="mt-1 flex items-center justify-between text-sm text-muted">
-          <span>⏱ {dict.booking.estimatedDuration}</span>
-          <span className="font-medium text-brand-700">{durationText}</span>
+          <span>{dict.booking.estimatedDuration}</span>
+          <span className="font-medium text-brand-900">{durationText}</span>
         </div>
       )}
     </div>
@@ -676,7 +663,7 @@ function ReviewRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-brand-100 bg-white p-4">
+    <div className="rounded-lg border border-brand-100 bg-white p-4">
       <p className="mb-1 text-[13px] font-semibold text-brand-400">
         {label}
       </p>

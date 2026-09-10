@@ -22,7 +22,7 @@ export function StatusLookup({
   const [pending, startTransition] = useTransition();
 
   const inputClass =
-    "w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
+    "w-full rounded-md border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
   function lookupCode() {
     if (!code.trim()) return;
@@ -48,10 +48,10 @@ export function StatusLookup({
               setTab(t);
               setErr("");
             }}
-            className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${
               tab === t
                 ? "bg-brand-600 text-white"
-                : "border border-brand-200 bg-white text-brand-700"
+                : "border border-brand-200 bg-white text-brand-900"
             }`}
           >
             {t === "code" ? st.tabCode : st.tabNamePhone}
@@ -71,7 +71,7 @@ export function StatusLookup({
           />
           <button
             onClick={lookupCode}
-            className="shrink-0 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white"
+            className="shrink-0 rounded-md bg-brand-600 px-5 py-3 font-semibold text-white"
           >
             {st.lookup}
           </button>
@@ -99,7 +99,7 @@ export function StatusLookup({
             <button
               onClick={lookupNamePhone}
               disabled={pending}
-              className="shrink-0 rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+              className="shrink-0 rounded-md bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
             >
               {st.lookup}
             </button>

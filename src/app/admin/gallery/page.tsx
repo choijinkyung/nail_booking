@@ -18,7 +18,7 @@ export default async function AdminGalleryPage() {
 
   return (
     <AdminShell active="gallery" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
+      <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.galleryTitle}
       </h1>
       <GalleryManager photos={photos} dict={dict} currency={settings.currency} />

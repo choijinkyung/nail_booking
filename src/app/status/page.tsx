@@ -14,7 +14,7 @@ const STATUS_STYLE: Record<BookingStatus, string> = {
   confirmed: "bg-green-100 text-green-800",
   declined: "bg-red-100 text-red-700",
   cancelled: "bg-gray-100 text-gray-600",
-  completed: "bg-brand-100 text-brand-700",
+  completed: "bg-brand-100 text-brand-900",
 };
 
 export default async function StatusPage({
@@ -54,7 +54,7 @@ export default async function StatusPage({
         <Link href="/" className="text-sm text-brand-600 hover:underline">
           ← {dict.common.home}
         </Link>
-        <h1 className="mt-2 text-xl font-bold text-brand-800">{st.title}</h1>
+        <h1 className="mt-2 text-xl font-bold text-brand-900">{st.title}</h1>
 
         {/* 예약번호 또는 이름+비밀번호로 조회 */}
         <div className="mt-4">
@@ -81,13 +81,13 @@ export default async function StatusPage({
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted">{dict.booking.yourCode}</p>
-                  <p className="font-bold tracking-widest text-brand-700">
+                  <p className="font-bold tracking-widest text-brand-900">
                     {booking.code}
                   </p>
                 </div>
               </div>
               {statusDesc[booking.status] && (
-                <p className="mt-3 rounded-xl bg-brand-50 p-3 text-sm text-brand-800">
+                <p className="mt-3 rounded-md bg-brand-50 p-3 text-sm text-brand-900">
                   {statusDesc[booking.status]}
                 </p>
               )}
@@ -193,7 +193,7 @@ export default async function StatusPage({
                       <span>{formatMoney(booking.tip, settings.currency)}</span>
                     </div>
                   )}
-                  <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
+                  <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-900">
                     <span>{dict.booking.finalTotal}</span>
                     <span>
                       {formatMoney(
@@ -205,7 +205,7 @@ export default async function StatusPage({
                   </div>
                 </>
               ) : (
-                <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-800">
+                <div className="mt-2 flex justify-between border-t border-brand-100 pt-2 font-bold text-brand-900">
                   <span>{dict.booking.estimated}</span>
                   <span>
                     {formatMoney(booking.estimated_total, settings.currency)}
@@ -217,18 +217,18 @@ export default async function StatusPage({
             {/* 결제 안내 — 시술 완료 후에만 노출 */}
             {booking.status === "completed" && (
               <Card className="border-brand-300 bg-brand-50">
-                <p className="font-semibold text-brand-800">
+                <p className="font-semibold text-brand-900">
                   {st.completedPayCard}
                 </p>
                 <p className="mt-2 text-sm text-brand-900">
                   {isEn ? settings.payment_en : settings.payment_ko}
                 </p>
                 {settings.etransfer_email && (
-                  <div className="mt-3 rounded-xl bg-white p-3">
+                  <div className="mt-3 rounded-md bg-white p-3">
                     <p className="text-xs text-muted">
                       {isEn ? "e-transfer recipient" : "e-transfer 받는 주소"}
                     </p>
-                    <p className="select-all font-semibold text-brand-700">
+                    <p className="select-all font-semibold text-brand-900">
                       {settings.etransfer_email}
                     </p>
                     {(isEn

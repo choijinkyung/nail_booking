@@ -56,7 +56,7 @@ export function ShareButtons({
       </button>
       <button
         onClick={copy}
-        className={`${btn} border border-brand-200 text-brand-700`}
+        className={`${btn} border border-brand-200 text-brand-900`}
       >
         {copied ? `✓ ${a.copied}` : a.copyBtn}
       </button>
@@ -79,7 +79,7 @@ export function ShareLinks({
   ];
 
   return (
-    <div className="mb-4 rounded-2xl border border-brand-100 bg-white p-4">
+    <div className="mb-4 rounded-lg border border-brand-100 bg-white p-4">
       <p className="mb-2 text-[13px] font-semibold text-brand-400">
         {a.shareTitle}
       </p>

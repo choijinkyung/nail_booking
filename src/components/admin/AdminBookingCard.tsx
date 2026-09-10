@@ -34,7 +34,7 @@ const STATUS_STYLE: Record<string, string> = {
   confirmed: "bg-green-100 text-green-800",
   declined: "bg-red-100 text-red-700",
   cancelled: "bg-gray-100 text-gray-600",
-  completed: "bg-brand-100 text-brand-700",
+  completed: "bg-brand-100 text-brand-900",
 };
 
 export function AdminBookingCard({
@@ -109,7 +109,7 @@ export function AdminBookingCard({
   );
 
   return (
-    <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -142,7 +142,7 @@ export function AdminBookingCard({
 
       {/* 손님 변경/취소 요청 배너 */}
       {booking.request_kind && (
-        <div className="mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+        <div className="mt-3 rounded-md border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-bold text-amber-900">
             {booking.request_kind === "change"
               ? a.requestBadgeChange
@@ -206,7 +206,7 @@ export function AdminBookingCard({
       )}
 
       {/* 시술 */}
-      <div className="mt-3 rounded-xl bg-brand-50/60 p-3 text-sm">
+      <div className="mt-3 rounded-md bg-brand-50/60 p-3 text-sm">
         <ul className="space-y-0.5">
           {booking.services.map((l, i) => (
             <li key={i} className="flex justify-between">
@@ -218,7 +218,7 @@ export function AdminBookingCard({
             </li>
           ))}
         </ul>
-        <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-800">
+        <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-900">
           <span>{dict.common.total}</span>
           <span>{total}</span>
         </div>
@@ -231,7 +231,7 @@ export function AdminBookingCard({
       )}
 
       {booking.early_contact && (
-        <p className="mt-2 rounded-lg border border-brand-300 bg-brand-50 p-2 text-sm font-semibold text-brand-800">
+        <p className="mt-2 rounded-lg border border-brand-300 bg-brand-50 p-2 text-sm font-semibold text-brand-900">
           ⏰ {a.earlyContactBadge}
         </p>
       )}
@@ -257,7 +257,7 @@ export function AdminBookingCard({
 
       {/* 확정 시간 (confirmed) */}
       {booking.status === "confirmed" && booking.confirmed_slot && (
-        <p className="mt-3 rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-800">
+        <p className="mt-3 rounded-md bg-green-50 p-3 text-sm font-semibold text-green-800">
           ✅ {formatDateTime(booking.confirmed_slot.starts_at, locale)}
         </p>
       )}
@@ -276,7 +276,7 @@ export function AdminBookingCard({
             return (
               <div
                 key={slot.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-brand-100 px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-md border border-brand-100 px-3 py-2"
               >
                 <span className="text-sm">
                   <span className="mr-1 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-600">
@@ -309,7 +309,7 @@ export function AdminBookingCard({
             onChange={(e) => setMessage(e.target.value)}
             rows={2}
             placeholder={a.messageToCustomer}
-            className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
+            className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
 
           {/* 다른 시간 제안 / 조정 — 가능한 시간 여러 개를 골라 손님에게 보내면 손님이 선택 */}
@@ -322,7 +322,7 @@ export function AdminBookingCard({
             </button>
           )}
           {showOffer && (
-            <div className="rounded-xl border border-brand-100 p-2">
+            <div className="rounded-md border border-brand-100 p-2">
               <p className="mb-2 text-xs text-muted">{a.proposeHint}</p>
               <div className="flex flex-wrap gap-1.5">
                 {openSlots.map((s) => {
@@ -340,7 +340,7 @@ export function AdminBookingCard({
                       className={`rounded-lg border px-2.5 py-1.5 text-xs ${
                         on
                           ? "border-brand-500 bg-brand-500 text-white"
-                          : "border-brand-200 bg-white text-brand-700"
+                          : "border-brand-200 bg-white text-brand-900"
                       }`}
                     >
                       {formatDateTime(s.starts_at, locale)}
@@ -373,7 +373,7 @@ export function AdminBookingCard({
                 declineBooking({ bookingId: booking.id, message }),
               )
             }
-            className="w-full rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
+            className="w-full rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
           >
             {a.decline}
           </button>
@@ -391,14 +391,14 @@ export function AdminBookingCard({
               onClick={() =>
                 notStarted ? setErr(a.completeTooEarly) : setShowComplete(true)
               }
-              className="flex-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="flex-1 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
               ✅ {notStarted ? a.completeAfterStart : a.markCompleted}
             </button>
             <button
               disabled={pending}
               onClick={() => run(() => cancelBooking({ bookingId: booking.id }))}
-              className="flex-1 rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
+              className="flex-1 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 disabled:opacity-40"
             >
               {a.cancelBooking}
             </button>
@@ -419,7 +419,7 @@ export function AdminBookingCard({
                 value={changeSlot}
                 onChange={(e) => setChangeSlot(e.target.value)}
                 disabled={changeCandidates.length === 0}
-                className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm disabled:opacity-50"
+                className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm disabled:opacity-50"
               >
                 <option value="">
                   {changeCandidates.length === 0
@@ -457,7 +457,7 @@ export function AdminBookingCard({
 
       {/* 완료 처리: 금액 + 팁 입력 */}
       {booking.status === "confirmed" && showComplete && (
-        <div className="mt-3 space-y-2 rounded-xl border border-brand-200 bg-brand-50/50 p-3">
+        <div className="mt-3 space-y-2 rounded-md border border-brand-200 bg-brand-50/50 p-3">
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className="mb-1 block text-xs text-muted">
@@ -482,7 +482,7 @@ export function AdminBookingCard({
               />
             </label>
           </div>
-          <div className="flex justify-between px-1 text-sm font-semibold text-brand-800">
+          <div className="flex justify-between px-1 text-sm font-semibold text-brand-900">
             <span>{dict.common.total}</span>
             <span>
               {formatMoney(
@@ -494,7 +494,7 @@ export function AdminBookingCard({
           <div className="flex gap-2">
             <button
               onClick={() => setShowComplete(false)}
-              className="rounded-lg border border-brand-200 px-3 py-2 text-xs text-brand-700"
+              className="rounded-lg border border-brand-200 px-3 py-2 text-xs text-brand-900"
             >
               {dict.common.cancel}
             </button>
@@ -519,7 +519,7 @@ export function AdminBookingCard({
 
       {/* 완료된 예약: 금액 표시 */}
       {booking.status === "completed" && (
-        <div className="mt-3 rounded-xl bg-brand-50/60 p-3 text-sm">
+        <div className="mt-3 rounded-md bg-brand-50/60 p-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted">{a.finalPriceLabel}</span>
             <span>{formatMoney(booking.final_price ?? booking.estimated_total, currency)}</span>
@@ -530,7 +530,7 @@ export function AdminBookingCard({
               <span>{formatMoney(booking.tip, currency)}</span>
             </div>
           )}
-          <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-800">
+          <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-900">
             <span>{dict.common.total}</span>
             <span>
               {formatMoney(
@@ -553,7 +553,7 @@ export function AdminBookingCard({
                 }
               })
             }
-            className="mt-2 w-full rounded-lg border border-brand-300 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-40"
+            className="mt-2 w-full rounded-lg border border-brand-300 px-3 py-2 text-xs font-semibold text-brand-900 disabled:opacity-40"
           >
             {resent ? `✓ ${a.resent}` : `💌 ${a.resendPayment}`}
           </button>

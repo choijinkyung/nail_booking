@@ -90,7 +90,7 @@ export function TimePicker({
 
   if (availDays.size === 0) {
     return (
-      <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-700">
+      <p className="rounded-md bg-brand-50 p-3 text-sm text-brand-900">
         {dict.booking.noSlots}
       </p>
     );
@@ -101,7 +101,7 @@ export function TimePicker({
       {/* 월 이동 */}
       <div className="mb-2 flex items-center justify-between">
         <button type="button" onClick={() => move(-1)} className="px-3 py-1.5 text-lg text-brand-600">‹</button>
-        <span className="font-bold text-brand-800">
+        <span className="font-bold text-brand-900">
           {isEn ? `${EN_MONTHS[month]} ${year}` : `${year}년 ${KO_MONTHS[month]}`}
         </span>
         <button type="button" onClick={() => move(1)} className="px-3 py-1.5 text-lg text-brand-600">›</button>
@@ -132,7 +132,7 @@ export function TimePicker({
                 isSel
                   ? "bg-brand-600 font-bold text-white"
                   : avail
-                    ? "bg-brand-50 font-medium text-brand-800 hover:bg-brand-100"
+                    ? "bg-brand-50 font-medium text-brand-900 hover:bg-brand-100"
                     : "text-brand-300"
               }`}
             >
@@ -159,11 +159,11 @@ export function TimePicker({
                   type="button"
                   disabled={!ok}
                   onClick={() => toggle(s.id)}
-                  className={`relative rounded-xl border px-3.5 py-2.5 text-sm font-medium transition ${
+                  className={`relative rounded-md border px-3.5 py-2.5 text-sm font-medium transition ${
                     on
                       ? "border-brand-500 bg-brand-500 text-white"
                       : ok
-                        ? "border-brand-200 bg-white text-brand-800 hover:bg-brand-50"
+                        ? "border-brand-200 bg-white text-brand-900 hover:bg-brand-50"
                         : "cursor-not-allowed border-brand-100 bg-brand-50 text-brand-300 line-through"
                   }`}
                 >

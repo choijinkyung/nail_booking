@@ -26,7 +26,7 @@ export function GalleryView({
 
   if (photos.length === 0) {
     return (
-      <p className="mt-8 rounded-xl bg-white/60 p-6 text-center text-sm text-muted">
+      <p className="mt-8 rounded-md bg-white/60 p-6 text-center text-sm text-muted">
         {dict.gallery.empty}
       </p>
     );
@@ -53,7 +53,7 @@ export function GalleryView({
           return (
             <figure
               key={p.id}
-              className="overflow-hidden rounded-xl border border-brand-100 bg-white"
+              className="overflow-hidden rounded-md border border-brand-100 bg-white"
             >
               <button
                 type="button"
@@ -72,7 +72,7 @@ export function GalleryView({
                 <figcaption className="flex items-center justify-between gap-1 px-2 py-1.5 text-xs">
                   <span className="truncate text-muted">{caption}</span>
                   {p.price != null && (
-                    <span className="shrink-0 font-semibold text-brand-700">
+                    <span className="shrink-0 font-semibold text-brand-900">
                       {formatMoney(p.price, currency)}
                     </span>
                   )}
@@ -100,7 +100,7 @@ export function GalleryView({
           <img
             src={zoom.image_url}
             alt={(isEn ? zoom.caption_en : zoom.caption_ko) || zoom.category}
-            className="max-h-[80vh] max-w-full rounded-xl object-contain"
+            className="max-h-[80vh] max-w-full rounded-md object-contain"
             onClick={(e) => e.stopPropagation()}
           />
           {((isEn ? zoom.caption_en : zoom.caption_ko) || zoom.price != null) && (
@@ -136,7 +136,7 @@ function Tab({
       className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition ${
         on
           ? "bg-brand-600 text-white"
-          : "border border-brand-200 bg-white text-brand-700"
+          : "border border-brand-200 bg-white text-brand-900"
       }`}
     >
       {label}

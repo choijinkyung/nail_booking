@@ -148,7 +148,7 @@ export function BookingManager({
       )}
 
       {/* 탭 */}
-      <div className="mt-5 flex rounded-2xl bg-brand-50 p-1">
+      <div className="mt-5 flex rounded-lg bg-brand-50 p-1">
         {TABS.map((t) => {
           const on = t.key === tab;
           return (
@@ -156,17 +156,17 @@ export function BookingManager({
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`flex-1 rounded-xl px-2 py-2 text-sm font-semibold transition ${
+              className={`flex-1 rounded-md px-2 py-2 text-sm font-semibold transition ${
                 on
-                  ? "bg-white text-brand-800 shadow-sm"
-                  : "text-brand-500 hover:text-brand-700"
+                  ? "bg-white text-brand-900 shadow-sm"
+                  : "text-brand-500 hover:text-brand-900"
               }`}
             >
               {t.label}
               {t.count > 0 && (
                 <span
                   className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${
-                    on ? "bg-brand-100 text-brand-700" : "text-brand-400"
+                    on ? "bg-brand-100 text-brand-900" : "text-brand-400"
                   }`}
                 >
                   {t.count}
@@ -181,7 +181,7 @@ export function BookingManager({
       {tab === "pending" && (
         <section className="mt-5">
           {pending.length === 0 ? (
-            <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+            <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
               {a.noPending}
             </p>
           ) : (
@@ -194,7 +194,7 @@ export function BookingManager({
       {tab === "upcoming" && (
         <section className="mt-5">
           {upcoming.length === 0 ? (
-            <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+            <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
               {a.noUpcoming}
             </p>
           ) : (
@@ -223,7 +223,7 @@ export function BookingManager({
               />
               <div className="mt-4 space-y-3">
                 {upSelCards.length === 0 ? (
-                  <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+                  <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
                     {a.selectDayHint}
                   </p>
                 ) : (
@@ -239,7 +239,7 @@ export function BookingManager({
       {tab === "past" && (
         <section className="mt-5">
           {pastDated.length === 0 && pastOther.length === 0 ? (
-            <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+            <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
               {a.noPastBookings}
             </p>
           ) : (
@@ -256,7 +256,7 @@ export function BookingManager({
                   />
                   <div className="mt-4 space-y-3">
                     {pastSelCards.length === 0 ? (
-                      <p className="rounded-xl bg-white/60 p-4 text-sm text-muted">
+                      <p className="rounded-md bg-white/60 p-4 text-sm text-muted">
                         {a.selectDayHint}
                       </p>
                     ) : (

@@ -98,7 +98,7 @@ export function NewBookingForm({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3">
+    <div className="space-y-3 rounded-lg border border-brand-100 bg-white p-3">
       <CustomerPicker customers={customers} dict={dict} onChange={setCustomer} />
 
       {/* 시술 선택 */}
@@ -128,17 +128,17 @@ export function NewBookingForm({
                 <button
                   onClick={() => bump(s.id, -1, perFinger)}
                   disabled={n === 0}
-                  className="h-7 w-7 shrink-0 rounded-full border border-brand-200 text-brand-700 disabled:opacity-30"
+                  className="h-7 w-7 shrink-0 rounded-full border border-brand-200 text-brand-900 disabled:opacity-30"
                 >
                   −
                 </button>
-                <span className="w-5 shrink-0 text-center text-sm font-semibold text-brand-800">
+                <span className="w-5 shrink-0 text-center text-sm font-semibold text-brand-900">
                   {n}
                 </span>
                 <button
                   onClick={() => bump(s.id, +1, perFinger)}
                   disabled={!perFinger && n >= 1}
-                  className="h-7 w-7 shrink-0 rounded-full border border-brand-200 text-brand-700 disabled:opacity-30"
+                  className="h-7 w-7 shrink-0 rounded-full border border-brand-200 text-brand-900 disabled:opacity-30"
                 >
                   +
                 </button>
@@ -176,7 +176,7 @@ export function NewBookingForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder={a.bookingNote}
-        className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
       />
 
       {msg && <p className="text-xs text-amber-600">{msg}</p>}

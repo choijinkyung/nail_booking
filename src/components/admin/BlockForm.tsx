@@ -89,7 +89,7 @@ export function BlockForm({
   }
 
   return (
-    <div className="space-y-2 rounded-2xl border border-brand-100 bg-white p-3">
+    <div className="space-y-2 rounded-lg border border-brand-100 bg-white p-3">
       <label className="flex items-center gap-2 text-sm text-brand-900">
         <input
           type="checkbox"
@@ -133,7 +133,7 @@ export function BlockForm({
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder={a.blockReason}
-        className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
       />
 
       {msg && <p className="text-xs text-amber-600">{msg}</p>}

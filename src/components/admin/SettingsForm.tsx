@@ -24,7 +24,7 @@ export function SettingsForm({
   );
   const a = dict.admin;
   const input =
-    "w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
+    "w-full rounded-md border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
   return (
     <div className="space-y-5 pb-4">
@@ -91,7 +91,7 @@ export function SettingsForm({
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white shadow-lg disabled:opacity-50"
+          className="w-full rounded-md bg-brand-600 px-5 py-3 font-semibold text-white shadow-lg disabled:opacity-50"
         >
           {pending ? dict.common.saving : dict.common.save}
         </button>
@@ -125,10 +125,10 @@ function LogoUploader({
   }, [state, router]);
 
   return (
-    <section className="rounded-2xl border border-brand-100 bg-white p-4">
-      <h2 className="mb-3 text-sm font-bold text-brand-700">{a.logo}</h2>
+    <section className="rounded-lg border border-brand-100 bg-white p-4">
+      <h2 className="mb-3 text-sm font-bold text-brand-900">{a.logo}</h2>
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-brand-100 text-3xl">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-100 text-3xl">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="logo" className="h-full w-full object-cover" />
@@ -142,7 +142,7 @@ function LogoUploader({
             name="file"
             accept="image/*"
             required
-            className="block w-full text-sm text-brand-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-700"
+            className="block w-full text-sm text-brand-900 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-900"
           />
           <div className="flex gap-2">
             <button
@@ -162,7 +162,7 @@ function LogoUploader({
                     router.refresh();
                   })
                 }
-                className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs text-brand-700 disabled:opacity-40"
+                className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs text-brand-900 disabled:opacity-40"
               >
                 {a.logoRemove}
               </button>
@@ -177,8 +177,8 @@ function LogoUploader({
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-brand-100 bg-white p-4">
-      <h2 className="mb-3 text-sm font-bold text-brand-700">{title}</h2>
+    <section className="rounded-lg border border-brand-100 bg-white p-4">
+      <h2 className="mb-3 text-sm font-bold text-brand-900">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>
   );

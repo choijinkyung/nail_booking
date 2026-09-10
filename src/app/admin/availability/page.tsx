@@ -27,7 +27,7 @@ export default async function AvailabilityPage() {
 
   return (
     <AdminShell active="availability" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
+      <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.availabilityTitle}
       </h1>
       <AvailabilityManager

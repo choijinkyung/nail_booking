@@ -43,7 +43,7 @@ export function ServicesManager({
       <button
         onClick={() => run(() => addService())}
         disabled={pending}
-        className="w-full rounded-xl border border-dashed border-brand-300 py-3 text-sm font-semibold text-brand-600 disabled:opacity-40"
+        className="w-full rounded-md border border-dashed border-brand-300 py-3 text-sm font-semibold text-brand-600 disabled:opacity-40"
       >
         ＋ {a.addService}
       </button>
@@ -98,7 +98,7 @@ function ServiceRow({
     "w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400";
 
   return (
-    <div className="rounded-2xl border border-brand-100 bg-white p-4">
+    <div className="rounded-lg border border-brand-100 bg-white p-4">
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
           <span className="mb-1 block text-xs text-muted">{a.serviceNameKo}</span>
@@ -118,7 +118,7 @@ function ServiceRow({
             inputMode="decimal"
             className={input}
           />
-          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-brand-700">
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-brand-900">
             <input
               type="checkbox"
               checked={priceFrom}
@@ -151,7 +151,7 @@ function ServiceRow({
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-brand-800">
+        <label className="flex items-center gap-2 text-sm text-brand-900">
           <input
             type="checkbox"
             checked={active}

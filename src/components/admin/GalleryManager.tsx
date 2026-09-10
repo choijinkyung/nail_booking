@@ -41,7 +41,7 @@ export function GalleryManager({
   const categories = [...new Set(photos.map((p) => p.category))];
   const resolvedCat = cat === "__custom__" ? customCat.trim() : cat;
   const input =
-    "w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
+    "w-full rounded-md border border-brand-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400";
 
   return (
     <div>
@@ -49,15 +49,15 @@ export function GalleryManager({
       <form
         ref={formRef}
         action={action}
-        className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4"
+        className="space-y-3 rounded-lg border border-brand-100 bg-white p-4"
       >
-        <p className="text-sm font-semibold text-brand-800">{a.uploadPhoto}</p>
+        <p className="text-sm font-semibold text-brand-900">{a.uploadPhoto}</p>
         <input
           type="file"
           name="file"
           accept="image/*"
           required
-          className="block w-full text-sm text-brand-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-700"
+          className="block w-full text-sm text-brand-900 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-100 file:px-3 file:py-2 file:text-brand-900"
         />
         {/* 카테고리 선택 (예약 시술 종류) */}
         <input type="hidden" name="category" value={resolvedCat} />
@@ -115,7 +115,7 @@ export function GalleryManager({
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-brand-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-md bg-brand-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50"
         >
           {pending ? a.uploading : a.upload}
         </button>
@@ -123,7 +123,7 @@ export function GalleryManager({
 
       {/* 기존 사진 */}
       {photos.length === 0 ? (
-        <p className="mt-6 rounded-xl bg-white/60 p-4 text-sm text-muted">
+        <p className="mt-6 rounded-md bg-white/60 p-4 text-sm text-muted">
           {a.noPhotos}
         </p>
       ) : (
@@ -137,7 +137,7 @@ export function GalleryManager({
                   .map((p) => (
                     <div
                       key={p.id}
-                      className="group relative aspect-square overflow-hidden rounded-xl border border-brand-100"
+                      className="group relative aspect-square overflow-hidden rounded-md border border-brand-100"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img

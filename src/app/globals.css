@@ -3,20 +3,22 @@
 @theme {
   /* Zenna Nail — 흰 바탕 + 헤어라인 구조. 색은 액션에만 쓴다.
      클래스 이름(brand-*)은 유지하고 값만 재조정해 화면 전체가 함께 바뀌게 한다. */
-  --color-brand-50: #faf8f6; /* 아주 옅은 면 (선택된 행, 눌림) */
-  --color-brand-100: #e9e6e2; /* 헤어라인 — 구조를 만드는 주역 */
-  --color-brand-200: #dcd7d1; /* 입력 테두리 */
-  --color-brand-300: #c3b9b0;
-  --color-brand-400: #8f857c; /* 보조 텍스트 */
-  --color-brand-500: #9c6a51;
-  --color-brand-600: #8a5a44; /* 강조 — 버튼, 현재 상태 */
-  --color-brand-700: #6e4632;
-  --color-brand-800: #2a211c; /* 제목 (갈색이 아니라 잉크에 가깝게) */
-  --color-brand-900: #1c1917;
+  /* 회색 계열은 완전한 중립 — 베이지 기운을 남기지 않는다.
+     유채색은 brand-600 하나뿐이고, 주요 버튼과 현재 상태에만 쓴다. */
+  --color-brand-50: #fafafa; /* 눌림·선택된 행 */
+  --color-brand-100: #e7e7e5; /* 헤어라인 — 구조를 만드는 주역 */
+  --color-brand-200: #d6d5d3; /* 입력 테두리 */
+  --color-brand-300: #b8b7b4;
+  --color-brand-400: #737373; /* 보조 텍스트 */
+  --color-brand-500: #8a5a44;
+  --color-brand-600: #8a5a44; /* 유일한 강조색 */
+  --color-brand-700: #6e4632; /* 강조색 눌림 상태 */
+  --color-brand-800: #1c1917; /* 제목 */
+  --color-brand-900: #111110;
 
-  --color-ink: #1c1917;
-  --color-muted: #78716c;
-  --color-surface: #f6f5f3;
+  --color-ink: #111110;
+  --color-muted: #737373;
+  --color-surface: #f5f5f4;
 
   --font-sans:
     "Pretendard", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont,

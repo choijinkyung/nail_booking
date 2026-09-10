@@ -24,7 +24,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminShell active="dashboard" dict={dict}>
-      <h1 className="mb-4 text-xl font-bold text-brand-800">
+      <h1 className="mb-4 text-xl font-bold text-brand-900">
         {dict.admin.dashboardTitle}
       </h1>
       <ShareLinks baseUrl={baseUrl} dict={dict} />

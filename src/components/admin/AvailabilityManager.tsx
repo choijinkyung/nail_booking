@@ -117,8 +117,8 @@ export function AvailabilityManager({
   return (
     <div className="space-y-3">
       {/* ① 요일별 영업시간 */}
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="text-sm font-semibold text-brand-800">{a.weeklyHours}</p>
+      <section className="rounded-lg border border-brand-100 bg-white p-4">
+        <p className="text-sm font-semibold text-brand-900">{a.weeklyHours}</p>
         <p className="mb-3 text-xs text-muted">{a.weeklyHoursHint}</p>
 
         <ul className="space-y-1.5">
@@ -201,7 +201,7 @@ export function AvailabilityManager({
         <button
           disabled={pending}
           onClick={() => run(() => saveBusinessHours({ hours, windowDays }))}
-          className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          className="mt-3 w-full rounded-md bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
         >
           {pending ? a.syncing : a.saveHours}
         </button>
@@ -211,8 +211,8 @@ export function AvailabilityManager({
       </section>
 
       {/* ② 쉬는 날 */}
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
-        <p className="text-sm font-semibold text-brand-800">{a.daysOffTitle}</p>
+      <section className="rounded-lg border border-brand-100 bg-white p-4">
+        <p className="text-sm font-semibold text-brand-900">{a.daysOffTitle}</p>
         <p className="mb-3 text-xs text-muted">{a.daysOffHint}</p>
 
         {futureDaysOff.length === 0 ? (
@@ -222,7 +222,7 @@ export function AvailabilityManager({
             {futureDaysOff.map((d) => (
               <li
                 key={d}
-                className="flex items-center justify-between rounded-xl border border-brand-100 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-md border border-brand-100 px-3 py-2 text-sm"
               >
                 <span className="text-brand-900">{d}</span>
                 <button
@@ -243,7 +243,7 @@ export function AvailabilityManager({
             min={today}
             value={newDayOff}
             onChange={(e) => setNewDayOff(e.target.value)}
-            className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
+            className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
           <button
             disabled={pending || !newDayOff}
@@ -254,7 +254,7 @@ export function AvailabilityManager({
                 return res;
               })
             }
-            className="shrink-0 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="shrink-0 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             {a.addDayOff}
           </button>
@@ -262,10 +262,10 @@ export function AvailabilityManager({
       </section>
 
       {/* ③ 지금 열려있는 시간 — 날짜당 한 줄 요약 */}
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+      <section className="rounded-lg border border-brand-100 bg-white p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-brand-800">
+            <p className="text-sm font-semibold text-brand-900">
               {a.openSummary}
             </p>
             <p className="text-xs text-muted">{a.openSummaryHint}</p>

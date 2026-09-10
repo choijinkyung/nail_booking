@@ -46,7 +46,7 @@ export function CustomerDetail({
     memo !== row.memo;
 
   const field =
-    "w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400";
+    "w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400";
 
   function save() {
     startTransition(async () => {
@@ -86,7 +86,7 @@ export function CustomerDetail({
       </Link>
 
       {/* 요약 */}
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+      <section className="rounded-lg border border-brand-100 bg-white p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-lg font-bold text-brand-900">
@@ -95,7 +95,7 @@ export function CustomerDetail({
             <span
               className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                 row.isReturning
-                  ? "bg-brand-100 text-brand-700"
+                  ? "bg-brand-100 text-brand-900"
                   : "bg-amber-100 text-amber-700"
               }`}
             >
@@ -112,7 +112,7 @@ export function CustomerDetail({
               {row.visits}
               {a.visits}
             </p>
-            <p className="mt-1 font-semibold text-brand-700">
+            <p className="mt-1 font-semibold text-brand-900">
               {formatMoney(row.totalSpent, currency)}
             </p>
           </div>
@@ -120,7 +120,7 @@ export function CustomerDetail({
       </section>
 
       {/* 수정 */}
-      <section className="space-y-2 rounded-2xl border border-brand-100 bg-white p-4">
+      <section className="space-y-2 rounded-lg border border-brand-100 bg-white p-4">
         <p className="text-[13px] font-semibold text-brand-400">
           {a.editCustomer}
         </p>
@@ -168,7 +168,7 @@ export function CustomerDetail({
       </section>
 
       {/* 방문 이력 */}
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
+      <section className="rounded-lg border border-brand-100 bg-white p-4">
         <p className="mb-2 text-[13px] font-semibold text-brand-400">
           {a.history}
         </p>
@@ -186,7 +186,7 @@ export function CustomerDetail({
                   {h.servicesText}
                 </span>
                 {h.amount > 0 && (
-                  <span className="shrink-0 text-xs font-semibold text-brand-700">
+                  <span className="shrink-0 text-xs font-semibold text-brand-900">
                     {formatMoney(h.amount, currency)}
                   </span>
                 )}
@@ -197,7 +197,7 @@ export function CustomerDetail({
       </section>
 
       {/* 삭제 */}
-      <section className="rounded-2xl border border-red-100 bg-white p-4">
+      <section className="rounded-lg border border-red-100 bg-white p-4">
         {confirmDelete ? (
           <div className="space-y-2">
             <p className="text-sm text-red-700">{a.deleteCustomerConfirm}</p>
@@ -211,7 +211,7 @@ export function CustomerDetail({
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="rounded-lg border border-brand-200 px-4 py-1.5 text-xs text-brand-700"
+                className="rounded-lg border border-brand-200 px-4 py-1.5 text-xs text-brand-900"
               >
                 {dict.common.cancel}
               </button>

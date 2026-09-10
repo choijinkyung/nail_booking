@@ -11,13 +11,13 @@ export function LoginForm({ dict }: { dict: Dict }) {
   );
 
   const inputClass =
-    "w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
+    "w-full rounded-md border border-brand-200 bg-white px-4 py-3 text-base outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
   return (
     <form action={action} className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-brand-800">
+          <span className="mb-1 block text-sm font-medium text-brand-900">
             {dict.admin.firstName}
           </span>
           <input
@@ -28,7 +28,7 @@ export function LoginForm({ dict }: { dict: Dict }) {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-brand-800">
+          <span className="mb-1 block text-sm font-medium text-brand-900">
             {dict.admin.lastName}
           </span>
           <input
@@ -40,7 +40,7 @@ export function LoginForm({ dict }: { dict: Dict }) {
         </label>
       </div>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-brand-800">
+        <span className="mb-1 block text-sm font-medium text-brand-900">
           {dict.admin.password}
         </span>
         <input
@@ -59,7 +59,7 @@ export function LoginForm({ dict }: { dict: Dict }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-brand-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
       >
         {pending ? dict.admin.signingIn : dict.admin.signIn}
       </button>

@@ -22,7 +22,7 @@ export default async function GalleryPage() {
         <Link href="/" className="text-sm text-brand-600 hover:underline">
           ← {dict.common.home}
         </Link>
-        <h1 className="mt-2 text-xl font-bold text-brand-800">
+        <h1 className="mt-2 text-xl font-bold text-brand-900">
           🖼️ {dict.gallery.title}
         </h1>
         <GalleryView

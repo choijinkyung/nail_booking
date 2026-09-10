@@ -16,16 +16,16 @@ export default async function AdminLoginPage() {
     <div className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-2xl">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-lg bg-brand-100 text-2xl">
             💅
           </div>
-          <h1 className="text-xl font-bold text-brand-800">
+          <h1 className="text-xl font-bold text-brand-900">
             {dict.admin.title} {dict.admin.login}
           </h1>
         </div>
 
         {!configured ? (
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-bold">⚠️ {dict.admin.setupNeeded}</p>
             <p className="mt-1">{dict.admin.setupDesc}</p>
           </div>

@@ -57,7 +57,7 @@ export function AdminShell({
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <span className="font-bold text-brand-900">{dict.admin.title}</span>
           <form action={signOut}>
-            <button className="text-sm text-muted hover:text-brand-700">
+            <button className="text-sm text-muted hover:text-brand-900">
               {dict.admin.signOut}
             </button>
           </form>
@@ -66,7 +66,7 @@ export function AdminShell({
 
       <main className="mx-auto max-w-lg px-4 pt-5">
         {!isSupabaseAdminConfigured() && (
-          <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="mb-4 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-bold">⚠️ 데이터베이스에 연결되지 않았어요</p>
             <p className="mt-1">
               메뉴·예약·시간 저장이 동작하지 않아요. 배포(Vercel) 환경변수에{" "}
