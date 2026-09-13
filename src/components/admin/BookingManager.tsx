@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
-import { formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
+import { formatDateTime, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
 import { AdminBookingCard } from "./AdminBookingCard";
 import { BookingCalendar, type PickerCustomer } from "./BookingCalendar";
 import type { BlockSlot } from "@/lib/data";
@@ -116,6 +116,23 @@ export function BookingManager({
   );
 
   const pastByDay = useMemo(() => groupByDay(pastDated), [pastDated]);
+
+  // 빈자리가 생겼을 때 연락해볼 손님 — 아직 끝나지 않은 예약만 의미가 있다.
+  const earlyContacts = useMemo(
+    () =>
+      bookings
+        .filter(
+          (b) =>
+            b.early_contact &&
+            (b.status === "pending" || b.status === "confirmed"),
+        )
+        .sort((x, y) =>
+          (bookingIso(x) ?? x.created_at).localeCompare(
+            bookingIso(y) ?? y.created_at,
+          ),
+        ),
+    [bookings],
+  );
 
   const [tab, setTab] = useState<Tab>(
     pending.length > 0 ? "pending" : "upcoming",
@@ -234,6 +251,62 @@ export function BookingManager({
             </button>
           </div>
         </div>
+      )}
+
+      {/* 빈자리가 생겼을 때 연락해볼 손님 */}
+      {earlyContacts.length > 0 && (
+        <details className="group mt-4 rounded-lg border border-brand-100 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-bold text-brand-900">
+            <span>
+              {a.earlyListTitle}
+              <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-[12px] font-semibold">
+                {earlyContacts.length}
+              </span>
+            </span>
+            <span
+              className="text-brand-400 transition-transform group-open:rotate-180"
+              aria-hidden
+            >
+              {"\u2304"}
+            </span>
+          </summary>
+          <p className="px-4 pb-2 text-xs text-muted">{a.earlyListHint}</p>
+          <ul className="divide-y divide-brand-100 border-t border-brand-100">
+            {earlyContacts.map((b) => {
+              const iso = bookingIso(b);
+              const digits = b.customer_contact.replace(/\D/g, "");
+              return (
+                <li key={b.id} className="px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold text-brand-900">
+                      {b.customer_name}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted">
+                      {iso ? formatDateTime(iso, locale) : a.pending}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[13px] text-muted">
+                    {b.services
+                      .map((l) => (locale === "en" ? l.name_en : l.name_ko))
+                      .join(", ")}
+                  </p>
+                  {digits ? (
+                    <a
+                      href={`tel:${digits}`}
+                      className="mt-1 inline-block text-sm font-medium text-brand-600 underline"
+                    >
+                      {b.customer_contact}
+                    </a>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted">
+                      {b.customer_contact}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </details>
       )}
 
       {/* 손님 요청 — 항상 최상단 */}
