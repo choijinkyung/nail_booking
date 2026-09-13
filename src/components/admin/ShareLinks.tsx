@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Dict } from "@/lib/i18n";
-import { galleryLink, homeLink } from "@/lib/shareLinks";
+import { homeLink } from "@/lib/shareLinks";
 
 /**
  * 보낼 문구에 대한 [공유] + [복사] 버튼.
@@ -87,7 +87,6 @@ export function ShareLinks({
       url: homeLink(baseUrl),
       text: (inviteText ?? "").trim() || a.shareMsgBook,
     },
-    { label: a.shareGallery, url: galleryLink(baseUrl), text: a.shareMsgGallery },
   ];
 
   return (

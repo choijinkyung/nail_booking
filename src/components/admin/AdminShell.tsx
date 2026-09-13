@@ -6,7 +6,6 @@ import { AutoSync } from "./AutoSync";
 import {
   IconBookings,
   IconCustomers,
-  IconGallery,
   IconHours,
   IconPrices,
   IconSettings,
@@ -18,7 +17,6 @@ type Tab =
   | "customers"
   | "availability"
   | "services"
-  | "gallery"
   | "settings";
 
 const TABS: {
@@ -31,7 +29,6 @@ const TABS: {
   { key: "customers", href: "/admin/customers", Icon: IconCustomers, label: "nav_customers" },
   { key: "availability", href: "/admin/availability", Icon: IconHours, label: "nav_availability" },
   { key: "services", href: "/admin/services", Icon: IconPrices, label: "nav_services" },
-  { key: "gallery", href: "/admin/gallery", Icon: IconGallery, label: "nav_gallery" },
   { key: "settings", href: "/admin/settings", Icon: IconSettings, label: "nav_settings" },
 ];
 
