@@ -90,6 +90,7 @@ export async function notifyCustomerCompleted(input: {
   to: string;
   code: string;
   serviceText: string;
+  /** 비어 있으면 팁 줄을 생략한다 */
   tipText: string;
   totalText: string;
   paymentText: string;
@@ -105,7 +106,7 @@ export async function notifyCustomerCompleted(input: {
       <h2 style="margin:0 0 12px">시술이 완료되었어요 🤎</h2>
       <table style="width:100%;border-collapse:collapse;margin:8px 0">
         <tr><td style="padding:6px 0">시술 금액</td><td style="padding:6px 0;text-align:right">${input.serviceText}</td></tr>
-        <tr><td style="padding:6px 0">팁</td><td style="padding:6px 0;text-align:right">${input.tipText}</td></tr>
+        ${input.tipText ? `<tr><td style="padding:6px 0">팁</td><td style="padding:6px 0;text-align:right">${input.tipText}</td></tr>` : ""}
         <tr><td style="padding:8px 0;border-top:1px solid #e7d6c9;font-weight:700">합계</td><td style="padding:8px 0;border-top:1px solid #e7d6c9;text-align:right;font-weight:700">${input.totalText}</td></tr>
       </table>
       <div style="margin:12px 0;padding:12px;background:#f2e9e1;border-radius:8px">

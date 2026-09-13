@@ -15,6 +15,7 @@ import { ShareButtons } from "./ShareLinks";
 import {
   cancelBooking,
   setBookingBuffer,
+  setBookingTip,
   completeBooking,
   confirmBooking,
   declineBooking,
@@ -79,7 +80,11 @@ export function AdminBookingCard({
   const [added, setAdded] = useState<
     { service_id: string; quantity: number; subtotal: string }[]
   >([]);
-  const [tip, setTip] = useState("0");
+  // 팁은 손님이 결제할 때 정하므로 완료(결제 안내) 뒤에 따로 기록한다.
+  const [tip, setTip] = useState(() =>
+    booking.tip > 0 ? String(booking.tip) : "",
+  );
+  const [tipSaved, setTipSaved] = useState(false);
   const [err, setErr] = useState("");
   const a = dict.admin;
   const isEn = locale === "en";
@@ -579,18 +584,6 @@ export function AdminBookingCard({
               </select>
             </li>
 
-            <li className="flex items-center gap-3 py-2">
-              <span className="min-w-0 flex-1 text-sm text-muted">
-                {a.tipLabel}
-              </span>
-              <input
-                value={tip}
-                onChange={(e) => setTip(e.target.value)}
-                inputMode="decimal"
-                aria-label={a.tipLabel}
-                className="w-24 shrink-0 rounded-lg border border-brand-200 bg-white px-3 py-2 text-right text-sm"
-              />
-            </li>
           </ul>
 
           <div className="flex justify-between border-t border-brand-200 pt-2 text-sm font-bold text-brand-900">
@@ -598,8 +591,7 @@ export function AdminBookingCard({
             <span>
               {formatMoney(
                 subtotals.reduce((sum, v) => sum + (Number(v) || 0), 0) +
-                  added.reduce((sum, x) => sum + (Number(x.subtotal) || 0), 0) +
-                  (Number(tip) || 0),
+                  added.reduce((sum, x) => sum + (Number(x.subtotal) || 0), 0),
                 currency,
               )}
             </span>
@@ -623,7 +615,6 @@ export function AdminBookingCard({
                       quantity: x.quantity,
                       subtotal: Number(x.subtotal) || 0,
                     })),
-                    tip: Number(tip) || 0,
                   }),
                   "completed",
                 )
@@ -643,12 +634,43 @@ export function AdminBookingCard({
             <span className="text-muted">{a.finalPriceLabel}</span>
             <span>{formatMoney(booking.final_price ?? booking.estimated_total, currency)}</span>
           </div>
-          {booking.tip > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted">{a.tipLabel}</span>
-              <span>{formatMoney(booking.tip, currency)}</span>
-            </div>
-          )}
+          {/* 팁은 결제 뒤에 기록 — 안내를 보낼 땐 아직 모른다 */}
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <span className="text-muted">{a.tipLabel}</span>
+            <span className="flex items-center gap-1.5">
+              <input
+                value={tip}
+                onChange={(e) => {
+                  setTip(e.target.value);
+                  setTipSaved(false);
+                }}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label={a.tipLabel}
+                className="w-20 rounded-lg border border-brand-200 bg-white px-2 py-1 text-right text-sm"
+              />
+              <button
+                disabled={pending || (Number(tip) || 0) === (booking.tip ?? 0)}
+                onClick={() => {
+                  setTipSaved(false);
+                  run(async () => {
+                    const res = await setBookingTip({
+                      bookingId: booking.id,
+                      tip: Number(tip) || 0,
+                    });
+                    if (res.ok) setTipSaved(true);
+                    return res;
+                  });
+                }}
+                className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                {dict.common.save}
+              </button>
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            {tipSaved ? a.tipSaved : a.tipAfterPayHint}
+          </p>
           <div className="mt-1 flex justify-between border-t border-brand-100 pt-1 font-semibold text-brand-900">
             <span>{dict.common.total}</span>
             <span>

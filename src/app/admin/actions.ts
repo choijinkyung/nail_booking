@@ -480,6 +480,9 @@ export async function cancelBooking(input: {
  * 예약 시점의 가격을 그대로 확정하지 않는다.
  *
  * 시작 시각 전이어도 관리자가 판단해 완료할 수 있다.
+ *
+ * 팁은 여기서 받지 않는다. 손님은 결제할 때 팁을 정하므로, 결제 안내를
+ * 보내는 시점에는 알 수 없다. 결제가 끝난 뒤 setBookingTip 으로 기록한다.
  */
 export async function completeBooking(input: {
   bookingId: string;
@@ -487,11 +490,10 @@ export async function completeBooking(input: {
   subtotals: number[];
   /** 예약에 없던 시술을 시술 중에 추가한 경우 */
   added?: { service_id: string; quantity: number; subtotal: number }[];
-  tip: number;
 }): Promise<ActionResult> {
   await assertAdmin();
   const sb = createSupabaseAdminClient();
-  const tip = Math.max(0, Number(input.tip) || 0);
+  const tip = 0;
 
   const { data: bRow } = await sb
     .from("bookings")
@@ -566,7 +568,7 @@ export async function completeBooking(input: {
         to: b.customer_email,
         code: b.code,
         serviceText: formatMoney(finalPrice, cur),
-        tipText: formatMoney(tip, cur),
+        tipText: tip > 0 ? formatMoney(tip, cur) : "",
         totalText: formatMoney(finalPrice + tip, cur),
         paymentText: (isEn ? s.payment_en : s.payment_ko) || "",
         etransferEmail: s.etransfer_email || "",
@@ -577,6 +579,39 @@ export async function completeBooking(input: {
       console.error("[completeBooking] 이메일 무시:", err);
     }
   }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/customers");
+  return { ok: true };
+}
+
+/**
+ * 결제가 끝난 뒤 실제로 받은 팁을 기록한다. 완료된 예약에만 적용되며,
+ * 매출 집계(final_price + tip)에 반영된다.
+ */
+export async function setBookingTip(input: {
+  bookingId: string;
+  tip: number;
+}): Promise<ActionResult> {
+  await assertAdmin();
+  const sb = createSupabaseAdminClient();
+  const tip = Math.max(0, Number(input.tip) || 0);
+
+  const { data: bRow } = await sb
+    .from("bookings")
+    .select("status")
+    .eq("id", input.bookingId)
+    .single();
+  if (!bRow) return { ok: false, error: "DB" };
+  if ((bRow as { status: string }).status !== "completed")
+    return { ok: false, error: "NOT_COMPLETED" };
+
+  const { error } = await sb
+    .from("bookings")
+    .update({ tip, updated_at: new Date().toISOString() })
+    .eq("id", input.bookingId);
+  if (error) return { ok: false, error: "DB" };
 
   revalidatePath("/admin");
   revalidatePath("/admin/calendar");
