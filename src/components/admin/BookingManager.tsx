@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { AvailabilitySlot, BookingWithSlots, Service } from "@/lib/types";
 import { formatDateTime, formatMoney, formatTimeOnly, slotDayKey } from "@/lib/format";
@@ -139,6 +139,29 @@ export function BookingManager({
   );
   // 한 번에 하나만 펼친다 — 여러 개가 동시에 열려 있으면 목록이 안 보인다.
   const [openId, setOpenId] = useState<string | null>(null);
+  // 목록에서 "이 예약 보기" 를 누르면 캘린더를 그 날짜로 옮긴다.
+  const [focusDay, setFocusDay] = useState<{ day: string; seq: number }>();
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  function goToBooking(b: BookingWithSlots) {
+    const iso = bookingIso(b);
+    setOpenId(b.id);
+    if (!iso) {
+      // 아직 확정 전이라 날짜가 없다 — 확인 대기에서 찾게 한다.
+      setTab("pending");
+      return;
+    }
+    setTab("upcoming");
+    setFocusDay((prev) => ({
+      day: slotDayKey(iso),
+      seq: (prev?.seq ?? 0) + 1,
+    }));
+    // 탭이 바뀌고 그려진 뒤에 캘린더로 스크롤한다.
+    setTimeout(
+      () => calendarRef.current?.scrollIntoView({ block: "start" }),
+      0,
+    );
+  }
   // 방금 처리한 예약의 안내. 확정하면 카드가 다른 탭으로 옮겨가므로
   // 안내는 목록 바깥에서 들고 있어야 사라지지 않는다.
   const [notice, setNotice] = useState<{
@@ -277,19 +300,25 @@ export function BookingManager({
               const digits = b.customer_contact.replace(/\D/g, "");
               return (
                 <li key={b.id} className="px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-semibold text-brand-900">
-                      {b.customer_name}
+                  <button
+                    onClick={() => goToBooking(b)}
+                    className="w-full text-left"
+                  >
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold text-brand-900">
+                        {b.customer_name}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted">
+                        {iso ? formatDateTime(iso, locale) : a.pending}
+                        <span className="ml-1 text-brand-300">›</span>
+                      </span>
                     </span>
-                    <span className="shrink-0 text-xs text-muted">
-                      {iso ? formatDateTime(iso, locale) : a.pending}
+                    <span className="mt-0.5 block truncate text-[13px] text-muted">
+                      {b.services
+                        .map((l) => (locale === "en" ? l.name_en : l.name_ko))
+                        .join(", ")}
                     </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-[13px] text-muted">
-                    {b.services
-                      .map((l) => (locale === "en" ? l.name_en : l.name_ko))
-                      .join(", ")}
-                  </p>
+                  </button>
                   {digits ? (
                     <a
                       href={`tel:${digits}`}
@@ -367,11 +396,13 @@ export function BookingManager({
         <section className="mt-5">
           {/* 캘린더가 예정된 예약의 주인공. 날짜를 누르면 그날 예약이
               예약 관리와 똑같은 카드로 펼쳐진다. */}
+          <div ref={calendarRef} className="scroll-mt-16" />
           <BookingCalendar
             bookings={bookings}
             blocks={blocks}
             services={services}
             customers={customers}
+            focusDay={focusDay}
             renderBooking={(id) => {
               const b = bookings.find((x) => x.id === id);
               return b ? render(b) : null;

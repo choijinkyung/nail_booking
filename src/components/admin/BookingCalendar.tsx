@@ -61,6 +61,7 @@ export function BookingCalendar({
   services,
   customers,
   renderBooking,
+  focusDay,
   today,
   dict,
   locale,
@@ -72,6 +73,8 @@ export function BookingCalendar({
   customers: PickerCustomer[];
   /** 그날 예약을 어떻게 그릴지 — 대시보드가 접이식 카드를 넘겨준다 */
   renderBooking?: (bookingId: string) => React.ReactNode;
+  /** 바깥에서 특정 날짜로 보내고 싶을 때. seq 가 바뀔 때마다 이동한다. */
+  focusDay?: { day: string; seq: number };
   today: string; // YYYY-MM-DD (Vancouver)
   dict: Dict;
   locale: Locale;
@@ -84,6 +87,17 @@ export function BookingCalendar({
   const [month, setMonth] = useState(tm - 1); // 0-indexed
   const [selected, setSelected] = useState(today);
   const [pane, setPane] = useState<"none" | "booking" | "block">("none");
+
+  // 다른 화면에서 "이 예약 보기" 로 들어오면 그 날짜로 달력을 옮긴다.
+  // 렌더 중에 맞춰준다 — effect 로 하면 한 번 그린 뒤 다시 그리게 된다.
+  const [seenSeq, setSeenSeq] = useState(focusDay?.seq);
+  if (focusDay && focusDay.seq !== seenSeq) {
+    const [fy, fm] = focusDay.day.split("-").map(Number);
+    setSeenSeq(focusDay.seq);
+    setYear(fy);
+    setMonth(fm - 1);
+    setSelected(focusDay.day);
+  }
 
   // 이벤트 구성: 확정/완료는 확정시간, 대기는 1지망시간 기준
   const events = useMemo<CalEvent[]>(() => {
